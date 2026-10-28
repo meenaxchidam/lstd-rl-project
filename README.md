@@ -2,6 +2,7 @@
 
 Reimplementation of J. Boyan, *Least-Squares Temporal Difference Learning*, ICML 1999 ([boyanLSTDlambda.pdf](boyanLSTDlambda.pdf)).
 Full plan, interfaces and timeline: [LSTD_Project_Plan.md](LSTD_Project_Plan.md).
+New to TD/LSTD? Start with [docs/MC_vs_TD_vs_LSTD.md](docs/MC_vs_TD_vs_LSTD.md) (worked example, no heavy maths).
 
 **Claim reproduced:** on the 13-state Boyan chain, LSTD(λ) has lower value-function error than TD(λ) for every λ and every step-size schedule we tried, at every number of trajectories, and LSTD has no step size to tune.
 **Novelty:** ridge-regularised LSTD, $(A + \epsilon I)\theta = b$, with 1–10 trajectories, run on the Boyan chain and on a 19-state random walk with aggregated features.

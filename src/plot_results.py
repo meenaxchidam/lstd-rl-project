@@ -89,6 +89,10 @@ def plot_learning_curves(cfg: dict, raw: Path, figs: Path) -> list[Path]:
     fig, ax = plt.subplots(figsize=(6.5, 4.2))
     _band(ax, cps, lstd[:, li], f"LSTD(λ={lam:g})", color="k", marker="o", ms=3)
     _band(ax, cps, td[:, li, k], f"TD(λ={lam:g}), best step size: {labels[k][3:]}", color="C3", marker="s", ms=3)
+    td_mean = td[:, li].mean(axis=0)
+    # Oracle: the best TD config chosen separately at every n (optimistic for TD).
+    ax.plot(cps, _finite(np.where(np.isfinite(td_mean), td_mean, np.inf).min(axis=0)),
+            color="C3", ls="--", label=f"TD(λ={lam:g}), best of all {td.shape[2]} configs at each n")
     ax.set(xscale="log", yscale="log", xlabel="number of trajectories", ylabel="RMS error of V",
            title=f"Boyan chain: LSTD vs best-tuned TD ({lstd.shape[0]} seeds, ±1 SE)")
     ax.grid(True, which="both", alpha=0.3)
