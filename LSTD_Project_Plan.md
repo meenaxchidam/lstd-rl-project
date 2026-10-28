@@ -190,8 +190,8 @@ mock_v_true = np.array([0.0, -1.0, -2.0])
 |---|---|---|
 | 0:00–4:00 | **A** | Motivation: policy evaluation; value functions & linear FA; Boyan chain + features |
 | 4:00–8:00 | **B** | TD(λ) & eligibility traces; weaknesses (step-size sensitivity, data inefficiency); α-sensitivity plot |
-| 8:00–12:00 | **C** | LSTD idea: solve the TD fixed point directly; derive $A\theta = b$; recursive version; complexity $O(d^2)$/$O(d^3)$ vs. $O(d)$ |
-| 12:00–16:00 | **D** | Headline result, λ and timing plots, **novelty result**, conclusions & limitations |
+| 8:00–12:00 | **C** | LSTD idea: solve the TD fixed point directly; derive $A\theta = b$; recursive version; complexity $O(d^2)$/$O(d^3)$ vs. $O(d)$; experimental setup |
+| 12:00–16:00 | **D** | Headline result, λ plot, **novelty result**, conclusions & limitations |
 | 16:00–20:00 | All | Q&A — each member handles questions on their section |
 
 **Likely questions to prepare**
