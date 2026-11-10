@@ -301,7 +301,7 @@
 % =========================================================================
 \section{TD($\lambda$)}
 
-\begin{frame}{TD: what it is and what we tested}
+\begin{frame}{Problem: estimating state values with TD}
   \speaker{\memberB}
   \textbf{Temporal Difference (TD)} estimates how much future reward a state is worth, using sampled experience. After a transition, it uses the reward just received and its current estimate of the next state's value (\emph{bootstrapping}).
   \[ \text{TD target}=r_t+\gamma\hat V(s_{t+1}),\qquad
@@ -310,71 +310,69 @@
     \column{0.48\textwidth}
     \begin{block}{What we tested}
       \small
-      TD($\lambda$) against LSTD($\lambda$) on the 13-state Boyan chain.\\
-      $\gamma=1$, $\lambda=0.4$; vary trajectory count and TD step size.\\
+      Estimate the value of each state from sampled trajectories on the Boyan chain.\\
+      We test TD($\lambda$) with $\gamma=1$, $\lambda=0.4$ and several step-size settings.\\
       Score: RMSE over all 13 states; lower is better.
     \end{block}
     \column{0.48\textwidth}
     \begin{block}{Main result from our full run}
       \small
-      At 100 trajectories: LSTD $0.152$, best paper-style TD $0.308$.\\
-      At 10,000: LSTD $0.0157$, TD $0.0362$.\\[0.2em]
-      20 random seeds; the detailed setup and paper comparison follow.
+      Best paper-style TD schedule: RMSE $0.308$ at 100 trajectories and $0.0362$ at 10,000.\\
+      20 random seeds; mean error decreases as more trajectories are observed.\\[0.2em]
+      The following slides show the update and experiment details.
     \end{block}
   \end{columns}
 \end{frame}
 
-\begin{frame}{How TD updates, and how it differs from MC}
+\begin{frame}{Methodology: TD($\lambda$) update and parameters}
   \speaker{\memberB}
-  For a fixed policy $\pi$, the state value is the expected discounted future reward:
-  \[ V^\pi(s)=\mathbb{E}_\pi\!\left[\sum_{k=t}^{T-1}\gamma^{k-t}r_k\mid s_t=s\right] \]
-  With linear features, $\hat V(s)=\vphi(s)^\top\vth$. TD forms an error and updates the weights:
+  We approximate a state's expected discounted future reward with features and learned weights, $\hat V(s)=\vphi(s)^\top\vth$. On transition $(s_t,r_t,s_{t+1})$:
   \[ \delta_t = r_t + \gamma\hat V(s_{t+1}) - \hat V(s_t),\qquad
-     \vth \leftarrow \vth + \alpha\,\delta_t\,\vphi(s_t) \]
+     \vz_t=\gamma\lambda\vz_{t-1}+\vphi(s_t),\qquad
+     \Delta\vth=\alpha_n\sum_t\delta_t\vz_t,\quad\vth\leftarrow\vth+\Delta\vth \]
   \begin{columns}[T]
     \column{0.48\textwidth}
-    \begin{block}{Monte Carlo (MC)}
+    \begin{block}{Parameters in this experiment}
       \small
-      Target: full observed return $G_t=\sum_{k=t}^{T-1}\gamma^{k-t}r_k$.\\
-      Wait for episode termination; no estimated next-state value.\\[0.2em]
-      \textbf{Unbiased target; often higher variance.}
+      $\vphi(s)$: four state features; $\vth$: learned weights.\\
+      $\gamma=1$: discount; $\lambda=0.4$: trace decay.\\
+      $\alpha_n$: learning rate for trajectory $n$.\\
+      $\vz_t$: eligibility trace, which shares error with recent states.
     \end{block}
     \column{0.48\textwidth}
-    \begin{block}{Temporal Difference (TD)}
+    \begin{block}{Run settings and update}
       \small
-      Target: $r_t+\gamma\hat V(s_{t+1})$.\\
-      Can update before termination; bootstraps from current estimate.\\[0.2em]
-      \textbf{Lower variance; biased while estimates are wrong.}
+      Paper schedule: $\alpha_n=a_0\frac{n_0+1}{n_0+n}$; $a_0\in\{0.01,0.1\}$, $n_0\in\{100,1000,10^6\}$.\\
+      Code freezes $\vth$ during each trajectory, sums $\delta_t\vz_t$, then applies the update.\\
+      Constant rates: $\alpha\in\{0.001,0.003,0.01,0.03,0.1,0.3\}$.
     \end{block}
   \end{columns}
   \begin{keyidea}
     \textbf{Worked example (TD(0), one-hot state):} current estimate $2$, reward $1$, next estimate $4$, discount $\gamma=0.9$.\\[-0.1em]
     TD target $=1+0.9(4)=4.6$; error $\delta=4.6-2=2.6$. With $\alpha=0.1$, new estimate $=2+0.1(2.6)=2.26$.
   \end{keyidea}
-  \small TD($\lambda$) trace: $\vz_t=\gamma\lambda\vz_{t-1}+\vphi(s_t)$. Our code sums $\delta_t\vz_t$ and updates at episode end.
-  \small For TD($\lambda$), $\vz_t=\gamma\lambda\vz_{t-1}+\vphi(s_t)$ shares each error with recent states. Our code sums $\Delta\vth=\sum_t\delta_t\vz_t$ and applies the total at episode end.
 \end{frame}
 
-\begin{frame}{Results vs Boyan (1999), Figure 5}
+\begin{frame}{Results: TD($\lambda$) on the Boyan chain}
   \speaker{\memberB}
   \begin{columns}[c]
     \column{0.54\textwidth}
-    \includegraphics[width=\linewidth]{fig1b_paper_fig5.png}
+    \includegraphics[width=\linewidth]{fig_td_learning_curves.png}
     \column{0.44\textwidth}
     \small
-    \textbf{Setup:} Boyan chain (13 states, 4 features), $\gamma=1$, $\lambda=0.4$; 20 seeds; RMSE over all states.\\[0.2em]
-    Mean RMS error $\pm$ standard error.\\[0.3em]
+    \textbf{Setup:} 13 states, 4 features, $\gamma=1$, $\lambda=0.4$; 20 seeds.\\
+    Mean RMSE $\pm$ standard error over all states.\\[0.2em]
     \begin{tabular}{@{}lcc@{}}
       \toprule
       & 100 trajectories & 10,000 trajectories \\
       \midrule
-      Best TD decay (6 tested) & $0.308\pm0.031$ & $0.0362\pm0.0039$ \\
-      LSTD($\lambda$) & $0.152\pm0.022$ & $0.0157\pm0.0018$ \\
+      Best decaying TD & $0.308\pm0.031$ & $0.0362\pm0.0039$ \\
+      Best constant-step TD & $0.379\pm0.046$ & $0.0413\pm0.0037$ \\
       \bottomrule
     \end{tabular}\\[0.4em]
-    \textbf{Paper's conclusion:} LSTD learns faster than all six TD schedules and has lower final error.\\[0.3em]
-    \textbf{Our result:} We choose TD's best decay separately at each checkpoint (favors TD); LSTD is still lower at both.\\[0.2em]
-    \scriptsize The paper reports 10-trial averages and shows curves, not exact table values; our numerical values are from the 20-seed run.
+    Best decay: $(a_0,n_0)=(0.1,100)$ at 100; $(0.01,1000)$ at 10,000.\\
+    Best constant rate: $\alpha=0.1$ at 100; $\alpha=0.001$ at 10,000.\\[0.2em]
+    \scriptsize Paper Fig. 5 reports 10 trials and six decays; our run uses 20 seeds and also tests six constant rates.
   \end{columns}
 \end{frame}
 

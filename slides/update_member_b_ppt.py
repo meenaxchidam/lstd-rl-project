@@ -1,9 +1,4 @@
-"""Refresh Member B's three raster slides inside the image-based PPTX.
-
-The deck's pages are full-slide PNGs. This script replaces pages 6–8 using
-the saved quick-run arrays, so updating these pages does not require a TeX
-installation. The corresponding Beamer source remains in lstd_presentation.tex.
-"""
+"""Refresh Member B's raster slides from the full TD learning-curve run."""
 from __future__ import annotations
 
 import os
@@ -12,199 +7,112 @@ import zipfile
 from pathlib import Path
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/lstd-matplotlib-cache")
-
 import matplotlib
-
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.patches import FancyBboxPatch
 
 ROOT = Path(__file__).resolve().parents[1]
-PPTX = ROOT / "slides" / "lstd_presentation.pptx"
-DATA = ROOT / "results" / "raw" / "learning_curves.npz"
-PAPER_FIG = ROOT / "results" / "figures" / "fig1b_paper_fig5.png"
-INK = "#1E2A3A"
-BODY = "#2B2F36"
-ACCENT = "#E4572E"
-GREEN = "#1F7A6D"
-MUTED = "#758092"
-PALE = "#F2F7F6"
+PPTX = ROOT / "slides/lstd_presentation.pptx"
+DATA = ROOT / "results/raw/learning_curves.npz"
+PLOT = ROOT / "results/figures/fig_td_learning_curves.png"
+INK, BODY, ORANGE, GREEN, MUTED = "#1E2A3A", "#2B2F36", "#E4572E", "#1F7A6D", "#758092"
 
 
-def _base(title: str, page: int):
+def base(title: str, page: int):
     fig = plt.figure(figsize=(13.333, 7.5), dpi=150, facecolor="white")
-    fig.text(0.07, 0.94, "02   ━━━   TD(λ)", color=ACCENT, fontsize=11, weight="bold")
-    fig.text(0.07, 0.875, title, color=INK, fontsize=23, weight="bold")
-    fig.text(0.93, 0.94, "MEMBER B", color=GREEN, fontsize=10, weight="bold", ha="right")
-    fig.add_artist(plt.Line2D([0.07, 0.93], [0.075, 0.075], color="#D9DDE3", lw=1))
-    fig.text(0.07, 0.04, "LSTD(λ)  ·  Boyan, ICML 1999", color=MUTED, fontsize=8)
-    fig.text(0.93, 0.04, f"{page} / 20", color=INK, fontsize=9, weight="bold", ha="right")
+    fig.text(.07,.94,"02   ━━━   TD(λ)",color=ORANGE,fontsize=11,weight="bold")
+    fig.text(.07,.875,title,color=INK,fontsize=22,weight="bold")
+    fig.text(.93,.94,"MEMBER B",color=GREEN,fontsize=10,weight="bold",ha="right")
+    fig.add_artist(plt.Line2D([.07,.93],[.075,.075],color="#D9DDE3",lw=1))
+    fig.text(.07,.04,"LSTD(λ)  ·  Boyan, ICML 1999",color=MUTED,fontsize=8)
+    fig.text(.93,.04,f"{page} / 20",color=INK,fontsize=9,weight="bold",ha="right")
     return fig
 
 
-def _card(fig, rect, title: str, color: str):
-    x, y, w, h = rect
-    patch = FancyBboxPatch(
-        (x, y), w, h,
-        boxstyle="round,pad=0.012,rounding_size=0.015",
-        transform=fig.transFigure, facecolor=PALE if color == GREEN else "#FCF4F1",
-        edgecolor="none", zorder=-1,
-    )
-    fig.add_artist(patch)
-    fig.text(x + 0.025, y + h - 0.06, title, color=color, fontsize=14, weight="bold")
+def slide_problem():
+    f=base("Problem: estimating state values with TD",6)
+    f.text(.08,.78,"Temporal Difference (TD) estimates a state's future reward from sampled transitions. It bootstraps\nfrom its current next-state estimate after each transition.",fontsize=12,color=BODY,linespacing=1.45)
+    f.text(.5,.65,r"TD target $=r_t+\gamma\hat V(s_{t+1})$     TD error $\delta_t=target-\hat V(s_t)$",fontsize=17,color=INK,ha="center")
+    f.text(.08,.52,"Problem",fontsize=14,color=GREEN,weight="bold")
+    f.text(.08,.45,"Estimate values for the 13-state Boyan chain from sampled trajectories. Test how TD(λ)\naccuracy changes with experience and learning-rate choice.",fontsize=11,color=BODY,linespacing=1.5)
+    f.text(.08,.30,"Headline result",fontsize=14,color=ORANGE,weight="bold")
+    f.text(.08,.23,"Best paper-style TD schedule: RMSE 0.308 at 100 trajectories and 0.0362 at 10,000.\nThese are means over 20 seeds; lower RMSE means more accurate state-value estimates.",fontsize=11,color=BODY,linespacing=1.5)
+    f.text(.08,.13,"Next: the TD(λ) update, the experiment settings, and the learning curves.",fontsize=10,color=MUTED)
+    return f
 
 
-def slide_method() -> plt.Figure:
-    fig = _base("How TD updates, and how it differs from MC", 7)
-    fig.text(0.08, 0.79, "For a fixed policy π, the value of state s is its expected discounted future reward:",
-             color=BODY, fontsize=11.5)
-    fig.text(0.5, 0.735,
-             r"$V^\pi(s)=\mathbb{E}_\pi\!\left[\sum_{k=t}^{T-1}\gamma^{k-t}r_k\mid s_t=s\right]$",
-             color=INK, fontsize=15, ha="center")
-    fig.text(0.5, 0.65,
-             r"$\hat V(s)=\phi(s)^\top\theta,\quad "
-             r"\delta_t=r_t+\gamma\hat V(s_{t+1})-\hat V(s_t),\quad "
-             r"\theta\leftarrow\theta+\alpha\delta_t\phi(s_t)$",
-             color=INK, fontsize=15, ha="center")
-
-    _card(fig, (0.08, 0.29, 0.39, 0.29), "Monte Carlo (MC)", ACCENT)
-    fig.text(0.11, 0.46, r"Target: $G_t=\sum_{k=t}^{T-1}\gamma^{k-t}r_k$", color=BODY, fontsize=12)
-    fig.text(0.11, 0.40, "Wait until the episode ends; use the full observed return.", color=BODY, fontsize=10.5)
-    fig.text(0.11, 0.33, "Unbiased return target; often higher variance.", color=ACCENT, fontsize=10, weight="bold")
-
-    _card(fig, (0.53, 0.29, 0.39, 0.29), "Temporal Difference (TD)", GREEN)
-    fig.text(0.56, 0.46, r"Target: $r_t+\gamma\hat V(s_{t+1})$", color=BODY, fontsize=12)
-    fig.text(0.56, 0.40, "Can update before termination; bootstraps from its estimate.", color=BODY, fontsize=10.5)
-    fig.text(0.56, 0.33, "Often lower variance; biased while estimates are wrong.", color=GREEN, fontsize=10, weight="bold")
-
-    fig.text(0.08, 0.20,
-             "Worked example (TD(0), one-hot state): current estimate = 2; reward = 1; next estimate = 4; γ = 0.9.",
-             color=INK, fontsize=9.5)
-    fig.text(0.08, 0.15,
-             r"TD target $=1+0.9(4)=4.6$; error $\delta=4.6-2=2.6$. With $\alpha=0.1$: "
-             r"new estimate $=2+0.1(2.6)=2.26$.",
-             color=INK, fontsize=9.5)
-    fig.text(0.08, 0.105,
-             r"TD($\lambda$) trace: $z_t=\gamma\lambda z_{t-1}+\phi(s_t)$; our code sums $\delta_tz_t$ and updates at episode end.",
-             color=MUTED, fontsize=8.2)
-    return fig
+def slide_method():
+    f=base("Methodology: TD(λ) update and parameters",7)
+    f.text(.5,.785,r"Value estimate: $\hat V(s)=\phi(s)^\top\theta$",fontsize=16,color=INK,ha="center")
+    f.text(.5,.705,r"TD error: $\delta_t=r_t+\gamma\hat V(s_{t+1})-\hat V(s_t)$",fontsize=16,color=INK,ha="center")
+    f.text(.5,.625,r"Trace: $z_t=\gamma\lambda z_{t-1}+\phi(s_t)$     Update: $\theta\leftarrow\theta+\alpha_n\sum_t\delta_t z_t$",fontsize=15,color=INK,ha="center")
+    f.text(.08,.51,"What the symbols mean",fontsize=12,color=GREEN,weight="bold")
+    f.text(.08,.455,"φ(s): four features for state s     θ: learned weights     γ = 1: discount factor\nλ = 0.4: trace decay     z: recent-state eligibility trace     αₙ: learning rate",fontsize=10.5,color=BODY,linespacing=1.5)
+    f.text(.08,.365,"Experiment procedure and tested step sizes",fontsize=12,color=GREEN,weight="bold")
+    f.text(.08,.315,"For each trajectory, hold θ fixed, sum δₜzₜ, then update θ once. Decay: αₙ=a₀(n₀+1)/(n₀+n),\nwith a₀∈{.01,.1}, n₀∈{100,1,000,1,000,000}. Constant α∈{.001,.003,.01,.03,.1,.3}.",fontsize=9.5,color=BODY,linespacing=1.4)
+    f.text(.08,.205,"Example: current value 2, reward 1, next value 4, γ=.9 → target 4.6, error 2.6.\nWith α=.1 and a one-hot feature, the new value is 2 + .1×2.6 = 2.26.",fontsize=9.5,color=INK,linespacing=1.4)
+    return f
 
 
-def slide_overview() -> plt.Figure:
-    fig = _base("TD: what it is and what we tested", 6)
-    fig.text(0.08, 0.79,
-             "Temporal Difference (TD) estimates a state's expected future reward from sampled experience. "
-             "It updates after a transition using the reward and its estimate of the next state.",
-             color=BODY, fontsize=12, wrap=True)
-    fig.text(0.5, 0.68,
-             r"TD target $=r_t+\gamma\hat V(s_{t+1})$; "
-             r"error $\delta_t=\text{target}-\hat V(s_t)$",
-             color=INK, fontsize=16, ha="center")
-
-    _card(fig, (0.08, 0.35, 0.39, 0.24), "What we did", GREEN)
-    fig.text(0.11, 0.47,
-             "Ran TD(λ) and LSTD(λ) on the 13-state Boyan chain.\n"
-             "Varied the number of trajectories and TD step-size settings.",
-             color=BODY, fontsize=10.2, linespacing=1.5)
-    _card(fig, (0.53, 0.35, 0.39, 0.24), "Main result", ACCENT)
-    fig.text(0.56, 0.47,
-             "At 100 trajectories: LSTD 0.152; best paper-style TD 0.308.\n"
-             "At 10,000: LSTD 0.0157; TD 0.0362.",
-             color=BODY, fontsize=10.2, linespacing=1.5)
-
-    fig.text(0.08, 0.25,
-             "We measure RMSE over all 13 states; lower is better. Full run: 20 seeds, "
-             "λ = 0.4, γ = 1, up to 10,000 trajectories.",
-             color=MUTED, fontsize=9.5)
-    fig.text(0.08, 0.17,
-             "Next: the TD update, how it differs from Monte Carlo, and a worked example.",
-             color=INK, fontsize=10, weight="bold")
-    return fig
+def mean_se(a):
+    return np.nanmean(a,axis=0),np.nanstd(a,axis=0,ddof=1)/np.sqrt(np.sum(np.isfinite(a),axis=0))
 
 
-def _mean_se(values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    mean = np.nanmean(values, axis=0)
-    count = np.sum(np.isfinite(values), axis=0)
-    se = np.nanstd(values, axis=0, ddof=1) / np.sqrt(np.maximum(count, 1))
-    return mean, se
+def make_curve(data):
+    PLOT.parent.mkdir(parents=True,exist_ok=True)
+    cps=data['checkpoints']; li=int(np.argmin(abs(data['lambdas']-.4)))
+    ix=np.where(data['td_schedules']=='decay')[0]
+    vals=data['td_err'][:,li,ix,:]
+    m,se=mean_se(vals)
+    fig,ax=plt.subplots(figsize=(8.2,4.6),dpi=180)
+    colors=plt.cm.tab10(np.linspace(0,1,len(ix)))
+    for j,k in enumerate(ix):
+        ax.plot(cps,m[j],lw=1.7,color=colors[j],label=data['td_labels'][k].replace('TD ','').replace('10^','10^'))
+    ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlabel('Number of trajectories'); ax.set_ylabel('RMSE over 13 states')
+    ax.set_title('TD(λ), λ = 0.4: six decaying step-size schedules')
+    ax.grid(True,which='both',alpha=.22); ax.legend(fontsize=7,ncol=2,frameon=False)
+    fig.tight_layout(); fig.savefig(PLOT,bbox_inches='tight'); plt.close(fig)
+    return PLOT
 
 
-def slide_results(data: np.lib.npyio.NpzFile) -> plt.Figure:
-    fig = _base("Results vs Boyan (1999), Figure 5", 8)
-    cps = data["checkpoints"]
-    lambdas = data["lambdas"]
-    li = int(np.argmin(np.abs(lambdas - 0.4)))
-    is_decay = data["td_schedules"] == "decay"
-    td = data["td_err"][:, li, is_decay, :]
-    lstd = data["lstd_err"][:, li, :]
-
-    ax = fig.add_axes([0.08, 0.20, 0.52, 0.56])
-    if PAPER_FIG.exists():
-        ax.imshow(plt.imread(PAPER_FIG))
-        ax.axis("off")
-    else:
-        raise SystemExit(f"Missing paper comparison plot: {PAPER_FIG}")
-
-    fig.text(0.63, 0.78, "Experiment setup", color=INK, fontsize=11, weight="bold")
-    fig.text(0.63, 0.73,
-             "Boyan: 13 states, 4 features; γ=1, λ=0.4.\n"
-             "Paper: 10 trials, 6 decays. Ours: 20 seeds,\n"
-             "same 6 decays + 6 constant α settings; RMSE all states.",
-             color=BODY, fontsize=7.6, linespacing=1.35)
-    fig.text(0.63, 0.62, "Our full-run results (mean ± SE)", color=INK, fontsize=10, weight="bold")
-    fig.text(0.80, 0.57, "100 traj.", color=MUTED, fontsize=8.5, ha="center")
-    fig.text(0.91, 0.57, "10,000 traj.", color=MUTED, fontsize=8.5, ha="center")
-    row_y = [0.51, 0.44]
-    for y, label, values in zip(row_y,
-                                ["Best TD decay", "LSTD(λ)"],
-                                [td, lstd[:, None, :]]):
-        fig.text(0.63, y, label, color=BODY, fontsize=8.7)
-        vals = []
-        for n in [100, 10000]:
-            c = int(np.argmin(np.abs(cps - n)))
-            arr = values[:, :, c].reshape(values.shape[0], -1)
-            ix = int(np.nanargmin(np.nanmean(arr, axis=0))) if label.startswith("Best") else 0
-            mean, se = _mean_se(arr[:, ix:ix+1])
-            vals.append(f"{mean[0]:.3f}±{se[0]:.3f}")
-        fig.text(0.80, y, vals[0], color=BODY, fontsize=8.8, ha="center")
-        fig.text(0.91, y, vals[1], color=BODY, fontsize=8.8, ha="center")
-
-    fig.text(0.63, 0.34, "What this means", color=GREEN, fontsize=10, weight="bold")
-    fig.text(0.63, 0.29,
-             "Best TD schedule is picked separately at each checkpoint (favors TD).\n"
-             "LSTD is still lower at both, matching Boyan's Figure 5 conclusion.",
-             color=BODY, fontsize=7.2, linespacing=1.4)
-    fig.text(0.63, 0.16,
-             "Mean ± SE over 20 seeds. Boyan reports 10-trial curves, not exact table values.\n"
-             "We compare the same 100 and 10,000 trajectory checkpoints.",
-             color=MUTED, fontsize=6.8, wrap=True)
-    return fig
+def slide_results(data):
+    f=base("Results: TD(λ) on the Boyan chain",8)
+    ax=f.add_axes([.07,.23,.53,.54]); ax.imshow(plt.imread(PLOT)); ax.axis('off')
+    f.text(.63,.78,"Setup",fontsize=12,color=INK,weight="bold")
+    f.text(.63,.725,"13 states; start at 12, terminal state 0\n4 interpolated features; γ=1, λ=.4\n20 seeds; RMSE over all states",fontsize=9,color=BODY,linespacing=1.45)
+    f.text(.63,.59,"Mean RMSE ± standard error",fontsize=10,color=INK,weight="bold")
+    f.text(.79,.545,"100 traj.",fontsize=8,color=MUTED,ha='center'); f.text(.91,.545,"10,000",fontsize=8,color=MUTED,ha='center')
+    cps=data['checkpoints']; li=int(np.argmin(abs(data['lambdas']-.4)))
+    for row,(sched,label,y) in enumerate([('decay','Best decay',.49),('constant','Best constant',.425)]):
+        settings=data['td_schedules']==sched; results=[]; configs=[]
+        for n in [100,10000]:
+            ci=int(np.where(cps==n)[0][0]); a=data['td_err'][:,li,settings,ci]
+            mn,se=mean_se(a); j=int(np.argmin(mn)); results.append(f"{mn[j]:.3f} ± {se[j]:.3f}"); configs.append(np.where(settings)[0][j])
+        f.text(.63,y,label,fontsize=8.7,color=BODY)
+        f.text(.79,y,results[0],fontsize=8.1,color=BODY,ha='center'); f.text(.91,y,results[1],fontsize=8.1,color=BODY,ha='center')
+    f.text(.63,.335,"Best settings",fontsize=10,color=GREEN,weight='bold')
+    f.text(.63,.29,"Decay: (a₀,n₀)=(.1,100) → (.01,1,000)\nConstant α: .1 → .001",fontsize=8.4,color=BODY,linespacing=1.5)
+    f.text(.63,.16,"Paper: 10 trials, six decay schedules. Our run: 20 seeds,\nsame six decays plus six constant rates.",fontsize=7.6,color=MUTED,linespacing=1.4)
+    return f
 
 
-def main() -> None:
-    if not PPTX.exists() or not DATA.exists() or not PAPER_FIG.exists():
-        raise SystemExit("Run the full experiment and plot commands before updating Member B's slides.")
-    data = np.load(DATA)
-    figures = [slide_overview(), slide_method(), slide_results(data)]
-    with tempfile.TemporaryDirectory() as temp:
-        images = []
-        for i, fig in enumerate(figures, start=6):
-            path = Path(temp) / f"slide{i}.png"
-            fig.savefig(path, dpi=150, facecolor="white")
-            plt.close(fig)
-            images.append(path)
-        output = Path(temp) / "updated.pptx"
-        with zipfile.ZipFile(PPTX, "r") as original, zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as updated:
-            replacements = {f"ppt/media/image{i}.png": img for i, img in zip(range(6, 9), images)}
-            for item in original.infolist():
-                if item.filename in replacements:
-                    updated.write(replacements[item.filename], item.filename)
-                else:
-                    updated.writestr(item, original.read(item.filename))
-        os.replace(output, PPTX)
-    print(f"Updated Member B slides 6–8 in {PPTX}")
+def main():
+    if not PPTX.exists() or not DATA.exists():
+        raise SystemExit("Run python3 -m src.run_experiment --experiment learning_curves first")
+    data=np.load(DATA); make_curve(data)
+    figures=[slide_problem(),slide_method(),slide_results(data)]
+    with tempfile.TemporaryDirectory() as td:
+        repl={f"ppt/media/image{i}.png":None for i in range(6,9)}
+        for i,fig in enumerate(figures,6):
+            p=Path(td)/f"slide{i}.png"; fig.savefig(p,dpi=150,facecolor='white'); plt.close(fig); repl[f"ppt/media/image{i}.png"]=p
+        out=Path(td)/"updated.pptx"
+        with zipfile.ZipFile(PPTX) as src,zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as dst:
+            for item in src.infolist():
+                if item.filename in repl: dst.write(repl[item.filename],item.filename)
+                else: dst.writestr(item,src.read(item.filename))
+        os.replace(out,PPTX)
+    print(f"Updated Member B slides and saved TD plot: {PPTX}")
 
 
-if __name__ == "__main__":
-    main()
+if __name__=='__main__': main()

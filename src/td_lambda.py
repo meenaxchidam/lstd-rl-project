@@ -12,9 +12,8 @@ updates are summed before applying one episode-level update. online=True
 applies each update immediately. lambda controls how far TD errors assign
 credit to previous feature vectors; lambda=0 is one-step TD.
 
-Unlike Monte Carlo, which targets the full observed return after termination,
-TD bootstraps from the current estimate V(s_{t+1}) and can learn before the
-episode ends.
+TD bootstraps from the current estimate V(s_{t+1}); the eligibility trace
+assigns each TD error to the current and recently visited states.
 """
 from __future__ import annotations
 
