@@ -1,12 +1,20 @@
-"""Member B — linear TD(lambda) with accumulating traces (paper Fig. 1).
+"""Member B — linear TD(lambda) with accumulating eligibility traces.
 
-z_t     = gamma * lam * z_{t-1} + phi(s_t)
-delta_t = r_t + gamma * phi(s_{t+1})^T theta - phi(s_t)^T theta     (phi(terminal) = 0)
-theta  += alpha_n * delta_t * z_t
+For transition (s_t, r_t, s_{t+1}), estimate V(s) = phi(s)^T theta and compute
 
-online=False (default, as in the paper): the updates of a trajectory are summed
-and applied once at its end, with theta held fixed during the trajectory.
-online=True: theta is updated after every transition.
+    z_t     = gamma * lam * z_{t-1} + phi(s_t)
+    delta_t = r_t + gamma * V(s_{t+1}) - V(s_t)
+    theta  += alpha_n * delta_t * z_t
+
+At termination V(s_{t+1}) is zero. With online=False (the default, matching
+Boyan's paper Fig. 1), theta is held fixed during an episode and the step
+updates are summed before applying one episode-level update. online=True
+applies each update immediately. lambda controls how far TD errors assign
+credit to previous feature vectors; lambda=0 is one-step TD.
+
+Unlike Monte Carlo, which targets the full observed return after termination,
+TD bootstraps from the current estimate V(s_{t+1}) and can learn before the
+episode ends.
 """
 from __future__ import annotations
 
@@ -49,9 +57,13 @@ def td_lambda_curve(
     online: bool = False,
     theta0=None,
 ) -> np.ndarray:
-    """Run TD(lambda) once and return theta after each checkpoint (number of trajectories).
+    """Run TD(lambda) and return theta at requested episode checkpoints.
 
-    Returns shape (len(checkpoints), d). If theta diverges, the remaining rows are NaN.
+    `phi[s]` is the feature vector for state s. In offline mode, V(s) is
+    evaluated with the episode's starting theta and the accumulated update is
+    applied after the episode; in online mode both are updated per transition.
+
+    Returns shape (len(checkpoints), d). If theta diverges, unreached rows are NaN.
     """
     phi = np.asarray(phi, dtype=float)
     cps = _validate_checkpoints(checkpoints, len(episodes))
@@ -65,15 +77,18 @@ def td_lambda_curve(
         z = np.zeros(d)
         if online:
             for s, r, s_next, done in episode:
+                # Eligibility accumulates recent features, fading by gamma*lambda.
                 z = gl * z + phi[s]
                 v_next = 0.0 if done else phi[s_next] @ theta
                 delta = r + gamma * v_next - phi[s] @ theta
                 theta += a * delta * z
         else:
+            # Paper mode: freeze theta for this episode and sum its updates.
             v = phi @ theta
             dtheta = np.zeros(d)
             for s, r, s_next, done in episode:
                 z = gl * z + phi[s]
+                # A terminal next state has value zero.
                 delta = r + gamma * (0.0 if done else v[s_next]) - v[s]
                 dtheta += delta * z
             theta += a * dtheta
