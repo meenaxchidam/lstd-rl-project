@@ -48,17 +48,20 @@
 
 ---
 
-## Slide 20: Reproducing the paper's Figures 5 and 6 (0:50)
+## Slide 20: Decaying step sizes and every λ (0:45)
 
-> "On the left is the paper's Figure 5. TD now uses the paper's six step-size schedules, where α shrinks over time. Some shrink too fast and get stuck, others stay noisy. LSTD in black is below all six.
+> "On the left is the paper's Figure 5, with λ = 0.4. A schedule is just a rule for how TD's step size changes over time. Here TD uses six decaying schedules: a₀ is the starting step size, and n₀ is how long before α starts decaying: α has halved after about n₀ trajectories. Some shrink too fast, others stay noisy. LSTD in black is below all six.
 >
-> On the right is Figure 6, repeated for every λ. Each bar is one algorithm. The top of the bar is the error after 100 trajectories and the bottom is after 10,000. The black LSTD bar is lowest at every λ.
+> On the right, Figure 6 repeats this for every λ, with the same colours. Each bar is one algorithm: the top is the error after 100 trajectories, the bottom after 10,000. The black LSTD bar is lowest at every λ.
 >
-> Same conclusion as the paper: LSTD is best at every λ, while TD depends critically on its schedule."
+> Same conclusion as the paper: LSTD is lowest for every schedule and every λ."
 
 **Remember:**
-- **α** is how big each step is; it shrinks over time in the left plot.
+- **α** is how big each step is; it shrinks over time here.
+- **a₀** = the starting step size. **n₀** = roughly how many trajectories until the step has halved. With n₀ = 10⁶ it barely shrinks within 10⁴ trajectories, so it acts almost like a fixed α.
 - **λ** is what TD learns from (0 = one-step TD, 1 = Monte Carlo). It is fixed at 0.4 on the left and varied on the right.
+- If asked for the formula: α_n = a₀ (n₀ + 1) / (n₀ + n), the paper's Eq. 8.
+- The values are in the left plot's legend: a₀ ∈ {0.1, 0.01}, n₀ ∈ {10², 10³, 10⁶}. The right plot has no legend because its colours are the same.
 
 ---
 
@@ -66,31 +69,35 @@
 
 > "Here we vary λ, the trace parameter Nadhiya introduced.
 >
-> LSTD's error hardly changes with λ: about 0.15 after 100 trajectories and 0.016 after ten thousand. The Boyan features represent the true values exactly, so every λ aims at the same answer.
+> LSTD's error hardly changes with λ: about 0.15 after 100 trajectories and 0.016 after ten thousand. The Boyan features are exact, so every λ converges to the same answer, θ* = (−24, −16, −8, 0).
 >
-> ✂ TD★ is TD with its best setting for each λ and data size.
+> ✂ TD★ is the best of the 12 TD settings for each λ and data size.
 >
-> And LSTD is 2 to 3.5 times better than TD with its best α, in every cell of the table."
+> And LSTD is 2 to 3.5 times better than TD★, in every cell of the table."
+
+**If asked "are the features really exact?":** yes. V(s) = −2s is a straight line, and the features linearly interpolate between the anchor states 12, 8, 4, 0, so θ* = (−24, −16, −8, 0) reproduces every true value (fit error ≈ 10⁻¹⁴). The paper says the same in Section 4: this "guarantees that LSTD(λ) will converge with probability 1 to the optimal θ for any setting of λ". Our runs agree: with 10⁴ trajectories, λ = 0, 0.4 and 1 all give θ ≈ (−23.97, −15.99, −7.97, 0.00).
 
 **If asked:** TD★ does best at a middle λ ≈ 0.4, matching Lecture 20's result that a middle n beats one-step TD and Monte Carlo.
 
 ---
 
-## Slide 22: Novelty: ridge LSTD (1:00)
+## Slide 22: Novelty: ridge LSTD (1:20)
 
-**On screen, top to bottom:** Problem → Questions Q1–Q3 → Method → Setup.
+**On screen, top to bottom:** Problem → Method → Questions Q1–Q3 → random-walk diagram → Setup.
 
 > "Now our own contribution.
 >
 > 🏥 Imagine a new clinic with only a handful of patients. **The problem:** LSTD solves Aθ = b, and with only 1 to 10 trajectories, A can be singular or badly conditioned, so the solution blows up.
 >
-> **We asked three questions.** Q1: how much ε should we add? Q2: with so little data, can it match the best-tuned TD? Q3: does it help on a harder problem the paper didn't try, a 19-state random walk with weak features?
->
 > **Our method** is ridge regularisation: add a small ε to the diagonal and solve (A + εI)θ = b. That always has a unique solution. ✂ It is the same as starting Sebin's recursive LSTD from B₀ = I/ε.
 >
-> ✂ **Setup:** 50 seeds, 1 to 10 trajectories, ε from 10⁻⁴ to 100, against TD with its best of five step sizes."
+> **We asked three questions.** Q1: how much ε should we add? Q2: with so little data, can it match the best-tuned TD? Q3: does it help on a harder problem with weak features?
+>
+> **For Q3 we use the random walk from Lecture 20** *(point at the diagram)*: start in the middle, step left or right at random, −1 at the left end, +1 at the right. The colours are the weak features: five groups, each sharing one value, so the true values can't be represented exactly.
+>
+> ✂ **Setup:** both environments, 50 seeds, 1 to 10 trajectories, ε from 10⁻⁴ to 100, with every method seeing the same episodes, against TD with its best of five step sizes."
 
-**Note:** say the bold words (Problem, questions, method, setup) slightly louder, so the structure is audible.
+**Note:** say the bold words (Problem, method, questions, setup) slightly louder, so the structure is audible.
 
 **If you blank:** *"Problem: A can't be solved with tiny data. Fix: add εI. Three questions: how much ε, does it match TD, does it help on a harder problem."*
 
@@ -98,24 +105,32 @@
 
 ## Slide 23: Novelty: results (1:15)
 
-**On screen:** the two plots (Boyan on the left, random walk on the right), with answers Q1–Q3 underneath.
+**On screen:** the two plots (Boyan on the left, 19-state random walk on the right), with answers Q1–Q3 underneath.
 
 > "The x-axis is ε, and each colour is a number of trajectories. If the solid ridge curve dips below the dotted plain-LSTD line, ridge helped.
 >
-> **Q1, how much ε:** there's a sweet spot, around 0.03 on Boyan and 1 to 3 on the random walk. Too much ε shrinks every value toward zero and hurts.
+> **Q1, how much ε:** there's a sweet spot, around 0.03 to 0.1 on Boyan and 1 to 3 on the random walk. Too much ε shrinks every value toward zero and hurts.
 >
-> **Q2, can it match TD:** yes. On the random walk, after one trajectory, ridge reaches 0.44 against the best TD's 0.43. ✂ On Boyan the question doesn't really arise, because plain LSTD already beats TD: 1.7 versus 6.5.
+> **Q2, can it match TD:** nearly. On the random walk, after one trajectory, ridge reaches 0.44 against the best TD's 0.43, and it beats TD with 2 and 5 trajectories. ✂ On Boyan the question doesn't really arise, because plain LSTD already beats TD: 1.7 versus 6.5.
 >
-> **Q3, the harder problem:** this is where ridge helps most. The error after one trajectory is halved, from 0.83 to 0.44. On Boyan the gain is only 1 to 3 percent, because A is already well conditioned.
+> **Q3, the harder problem:** this is where ridge helps most. The error after one trajectory is halved, from 0.83 to 0.44. On Boyan the gain is at most 3 percent, because A is already well conditioned.
 >
 > 🏥 That's the new clinic: few patients, coarse groups, exactly where ridge helps."
 
 **If you blank:** *"Ridge helps when data are scarce and the features are weak; it does little when LSTD is already well posed."*
 
+**Random walk, checked (in case anyone asks):**
+- It is Sutton & Barto's Example 7.1 (also Lecture 20): 19 states plus two ends, start in the middle (state 10), step left or right with probability ½, reward −1 at the left end and +1 at the right end, γ = 1. True values are −0.9, −0.8, …, +0.9. Episodes last about 100 steps on average.
+- Weak features: the 19 states are split into 5 neighbouring groups (sizes 4, 4, 4, 4, 3); each group shares one value. This is state aggregation (S&B §9.3).
+- The **best possible** error with these features is about **0.10**, so the true values really can't be represented exactly.
+- For scale: **predicting 0 everywhere gives 0.52**. Plain LSTD after one trajectory (0.83) is *worse* than that; ridge (0.44) and TD (0.43) both beat it. Since the true values are centred on 0, shrinking toward 0 is a safe default here, which is why ridge helps.
+- The error is measured over all 21 states, including the two ends, whose value 0 is always predicted correctly.
+
 **Backup facts (do not say unless asked):**
 - 82% of single random-walk episodes miss at least one feature group, which makes A singular. On Boyan, 0% do.
-- The random walk's true values (−0.9 … +0.9) are centred on 0, so shrinking toward 0 costs little there; Boyan's values go down to −24, so it costs a lot.
-- Ridge vs TD: slightly better at 2 and 5 trajectories; TD is marginally better at 10.
+- Boyan's values go down to −24, so shrinking toward 0 costs a lot there.
+- Ridge vs TD on the random walk: TD slightly better at 1 trajectory (0.43 vs 0.44) and 10 (0.33 vs 0.34); ridge better at 2 (0.41 vs 0.43) and 5 (0.37 vs 0.39).
+- Both ε for ridge and α for TD are picked as the best value after the fact, so the comparison treats them alike.
 - Why A is well conditioned on Boyan: every episode passes through all the features.
 - Plot legend: solid = ridge LSTD, dotted = plain LSTD, dashed = best-tuned TD.
 
@@ -128,8 +143,6 @@
 > 🏥 So when data is expensive, like patient records, LSTD is the better choice.
 >
 > The main limitations: these are toy problems with exact features, the best case for LSTD, and a fixed ε has less effect as data grow.
->
-> ✂ Next, we'd like to try Mountain Car with tile coding, LSPI for control, and the clipped TD-error ideas the professor suggested in Lecture 15.
 >
 > Thank you."
 

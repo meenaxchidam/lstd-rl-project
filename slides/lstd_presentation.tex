@@ -511,21 +511,27 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Reproducing the paper's Figures 5 and 6}
+\begin{frame}{Decaying step sizes and every $\lambda$ (paper Figs.~5--6)}
   \speaker{\memberD}
+  \small
+  \textbf{Schedule} = how TD's step size $\alpha$ changes over time; here, 6 \emph{decaying} ones. \textbf{Black = LSTD.}\\
+  \mbox{$a_0$ = starting step size}, \mbox{$n_0$ = how long before $\alpha$ starts decaying} ($\alpha$ halves after $\approx n_0$ traj.).
+
+  \vspace{0.5em}
   \begin{columns}[T]
-    \column{0.5\textwidth}
+    \column{0.49\textwidth}
     \centering
-    \includegraphics[width=\linewidth]{fig1b_paper_fig5.png}\\
-    \small Paper Fig.~5: $\lambda = 0.4$, six schedules of Eq.~8
-    \column{0.5\textwidth}
+    \textbf{Fig.~5}\enspace learning curves at $\lambda = 0.4$\\[0.2em]
+    \includegraphics[width=\linewidth,height=4.3cm,keepaspectratio]{fig1b_paper_fig5.png}
+    \column{0.49\textwidth}
     \centering
-    \includegraphics[width=\linewidth]{fig3b_paper_fig6.png}\\
-    \small Paper Fig.~6: error at $n=100$ (top) $\to 10^4$ (bottom)
+    \textbf{Fig.~6}\enspace every $\lambda$: bar = 100 $\to$ $10^4$ traj.\\[0.2em]
+    \includegraphics[width=\linewidth,height=4.3cm,keepaspectratio]{fig3b_paper_fig6.png}
   \end{columns}
-  \vspace{0.3em}
+
+  \vspace{0.4em}
   \centering
-  \hl{Same conclusion as the paper:} LSTD is best at every $\lambda$; TD depends critically on the schedule.
+  \hl{Same conclusion as the paper:} LSTD is lowest for every schedule and every $\lambda$.
 \end{frame}
 
 \begin{frame}{Effect of $\lambda$}
@@ -552,8 +558,8 @@
 
     TD$^\star$ = best of 12 TD configs for that $n$ and $\lambda$.
     \begin{itemize}
-      \item $\lambda$ barely matters for LSTD here (features are exact)
-      \item LSTD beats TD with its best $\alpha$ by $2$--$3.5\times$ everywhere
+      \item $\lambda$ barely matters for LSTD: features are \emph{exact}, so every $\lambda$ converges to the same $\vth^* = (-24,-16,-8,0)$
+      \item LSTD beats TD$^\star$ by $2$--$3.5\times$ everywhere
     \end{itemize}
   \end{columns}
 \end{frame}
@@ -563,20 +569,33 @@
   \small
   \textbf{Problem.} With 1--10 trajectories, $A$ can be singular or ill-conditioned $\Rightarrow$ $\vth = A^{-1}\mathbf{b}$ is unstable.
 
-  \vspace{0.5em}
+  \textbf{Method.} Ridge LSTD: solve $(A + \epsilon I)\,\vth = \mathbf{b}$ \;(= recursive LSTD with $B_0 = I/\epsilon$).
+
   \textbf{Questions.}
   \begin{enumerate}
     \item[\hl{Q1}] How much $\epsilon$ should we add?
     \item[\hl{Q2}] With 1--5 trajectories, can it match the best-tuned TD?
-    \item[\hl{Q3}] Does it help beyond the paper: \textbf{19-state random walk} (S\&B) with \textbf{weak features} (5 aggregated groups, $V^\pi$ not representable)?
+    \item[\hl{Q3}] Does it help on a harder problem with \textbf{weak features}: the \textbf{19-state random walk} (S\&B Ex.~7.1)?
   \end{enumerate}
 
-  \vspace{0.3em}
-  \textbf{Method.} Ridge LSTD: solve
-  \[ (A + \epsilon I)\,\vth = \mathbf{b} \]
-  (equivalently: recursive LSTD with $B_0 = I/\epsilon$).
+  \centering
+  \begin{tikzpicture}[x=0.44cm,y=0.44cm,
+      st/.style={draw=white,line width=0.6pt,minimum size=0.42cm,inner sep=0pt,font=\tiny},
+      tm/.style={draw=ink,fill=hair,minimum height=0.42cm,minimum width=0.62cm,inner sep=0pt,font=\scriptsize\bfseries}]
+    \foreach \s in {1,...,19}{
+      \pgfmathtruncatemacro{\g}{min(int((\s-1)/4),4)}
+      \ifcase\g \def\c{second!25}\or\def\c{accent!22}\or\def\c{second!50}\or\def\c{accent!45}\or\def\c{second!75}\fi
+      \node[st,fill=\c] (s\s) at (\s,0) {\s};
+    }
+    \node[tm,anchor=east] at (0.45,0) {$-1$};
+    \node[tm,anchor=west] at (19.55,0) {$+1$};
+    \draw[-{Stealth[length=4pt]},ink] (10,-1.15) node[below=-1pt,font=\tiny]{start} -- (10,-0.55);
+    \node[font=\tiny,muted,anchor=west] at (11,-1.05) {$\leftarrow\!\rightarrow$ w.p.\ $\tfrac12$ each \quad $V^\pi(s) = s/10 - 1$};
+    \node[font=\tiny,muted,anchor=north] at (10,1.35) {5 colour groups (4,4,4,4,3 states) share one value each $\Rightarrow$ $V^\pi$ not representable};
+  \end{tikzpicture}
 
-  \textbf{Setup.} 50 seeds, $\lambda = 0.4$, $n \in \{1, 2, 5, 10\}$, $\epsilon \in [10^{-4}, 10^2]$; TD reference = best of 5 constant $\alpha$ at each $n$.
+  \raggedright
+  \textbf{Setup.} Both environments, 50 seeds, $\lambda = 0.4$, $n \in \{1, 2, 5, 10\}$, 13 values of $\epsilon$ from $10^{-4}$ to $10^2$; same episodes for all methods. TD reference = best of 5 constant $\alpha$ ($0.01$--$1$) at each $n$.
 \end{frame}
 
 \begin{frame}{Novelty: results}
@@ -589,14 +608,14 @@
     \column{0.5\textwidth}
     \centering
     \includegraphics[width=\linewidth,height=3.3cm,keepaspectratio]{fig5_ridge_random_walk.png}\\[-0.2em]
-    \footnotesize Random walk (weak features)
+    \footnotesize 19-state random walk (weak features)
   \end{columns}
   \vspace{0.2em}
   \small
   \begin{itemize}
-    \item[\hl{Q1}] \textbf{A sweet spot:} $\epsilon \approx 0.03$ (Boyan), $\epsilon \approx 1$--3 (random walk); larger $\epsilon$ shrinks $\vth \to 0$ and hurts.
-    \item[\hl{Q2}] \textbf{Yes:} random walk, $n=1$: 0.44 vs.\ best TD 0.43. (Boyan: plain LSTD already wins.)
-    \item[\hl{Q3}] \textbf{Helps most here:} error \hl{halved} at $n=1$ (0.83 $\to$ 0.44). Boyan: only 1--3\%.
+    \item[\hl{Q1}] \textbf{A sweet spot:} $\epsilon \approx 0.03$--$0.1$ (Boyan), $\epsilon \approx 1$--3 (random walk); larger $\epsilon$ shrinks $\vth \to 0$ and hurts.
+    \item[\hl{Q2}] \textbf{Nearly:} random walk, $n=1$: 0.44 vs.\ best TD 0.43; better than TD at $n = 2, 5$. (Boyan: plain LSTD already wins.)
+    \item[\hl{Q3}] \textbf{Helps most here:} error \hl{halved} at $n=1$ (0.83 $\to$ 0.44). Boyan: at most 3\%.
   \end{itemize}
 \end{frame}
 
@@ -622,10 +641,6 @@
       \item Ridge shrinks toward $\vth = 0$, not a prior.
     \end{itemize}
   \end{columns}
-  \begin{keyidea}
-    \small\textbf{Next:}\enspace Mountain Car with tile coding (large $K$)\enspace\textperiodcentered\enspace
-    LSPI: LSTD for control\enspace\textperiodcentered\enspace clipped / sign TD-error baselines
-  \end{keyidea}
 \end{frame}
 
 \begin{frame}[plain]
