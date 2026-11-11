@@ -52,7 +52,7 @@
 \setbeamertemplate{description item}{\color{second}\bfseries\insertdescriptionitem}
 
 \newcommand{\twodigit}[1]{\ifnum#1<10 0\fi\number#1}
-\newcommand{\sectionspeaker}{\ifcase\value{section}\or\memberA\or\memberB\or\memberC\or\memberD\fi}
+\newcommand{\sectionspeaker}{\ifcase\value{section}\or\memberA\or\memberA\or\memberA\or\memberB\or\memberC\or\memberD\fi}
 \newif\ifbackup
 
 \makeatletter
@@ -94,6 +94,7 @@
 \newcommand{\darkbg}{\fill[ink] (current page.south west) rectangle (current page.north east);}
 
 \AtBeginSection[]{%
+  \ifnum\value{section}<4\else
   \begin{frame}[plain,noframenumbering]
   \begin{tikzpicture}[remember picture,overlay]
     \darkbg
@@ -103,12 +104,12 @@
       at ([xshift=1.1cm,yshift=-0.35cm]current page.west) {\insertsectionhead};
     \node[anchor=north west,inner sep=0pt,text=white!60!ink,font=\small]
       at ([xshift=1.1cm,yshift=-1.6cm]current page.west) {\faMicrophone\enspace\sectionspeaker};
-    \foreach \k in {1,...,4} {
+    \foreach \k in {1,...,6} {
       \ifnum\k=\value{section}\def\barcol{accent}\else\def\barcol{white!25!ink}\fi
       \fill[\barcol] ([xshift=1.1cm+(\k-1)*1.0cm,yshift=1.0cm]current page.south west) rectangle ++(0.8cm,0.08cm);
     }
   \end{tikzpicture}
-  \end{frame}}
+  \end{frame}\fi}
 % =========================================================================
 
 \newcommand{\speaker}[1]{\framesubtitle{#1}}
@@ -144,52 +145,49 @@
   \end{tikzpicture}
 \end{frame}
 
+\section{Problem statement and setup}
+
 \begin{frame}{Problem statement and motivation}
   \speaker{\memberA}
   \small
-  \textbf{Problem.} The behavior is already fixed. We want its value, the expected total future reward from each state, using only sampled trajectories. If the transitions were known, this would be a linear system. Here they are not.
-  \vspace{0.55em}
-
-  \textbf{Why a new method.} TD($\lambda$) can learn that value, but each trajectory only nudges the weights by a step size, and that step size has to be chosen by hand. A poor choice makes learning slow or unstable, and the data are used only once.
-  \vspace{0.55em}
-
-  \textbf{Boyan's answer.} \emph{Least-Squares Temporal Difference Learning} (ICML 1999) received the \hl{Best Paper Award}. LSTD($\lambda$) writes the same TD equations as one linear system and solves it directly: no step size, and a more accurate value from the same trajectories.
-  \vspace{0.55em}
-
-  The next slides set up the value function and the three estimators. The chain, the algorithms, and the experiment follow.
+  \begin{itemize}
+    \item An agent moves from state to state and receives a reward after each move. A policy is the rule that chooses those moves.
+    \item In this project the policy is already chosen and does not change, so the system is a Markov reward process (MRP).
+    \item If every transition probability were known, that estimate would be the solution of a linear system.
+    \item The probabilities are unknown. We only see sampled trajectories, so the system has to be built from data.
+    \item TD($\lambda$) builds it through repeated step-size updates. The step size is chosen by hand, and a poor choice makes learning slow or unstable.
+    \item Boyan (ICML 1999, \hl{Best Paper Award}) replaces those updates with one least-squares solve, LSTD($\lambda$). The same trajectories give a more accurate value, and there is no step size.
+    \item With only a few trajectories the least-squares matrix can be poorly determined. \hl{Ridge regression}, $(A+\epsilon I)\vth=b$, is our addition for that case.
+  \end{itemize}
 \end{frame}
 
 % =========================================================================
+\section{Background}
+
 \begin{frame}{Policy evaluation}
   \speaker{\memberA}
   \small
-  \setlength{\abovedisplayskip}{0.35em}%
-  \setlength{\belowdisplayskip}{0.35em}%
-  This project studies \hl{policy evaluation with value-function approximation}. The behavior is already fixed, so we do not approximate or improve the policy. We approximate its value,
-  \[
-    \hat V(s)=\vphi(s)^\top\vth,
-  \]
-  from sampled episodes of a Markov reward process.
-  \vspace{0.35em}
+  \setlength{\abovedisplayskip}{0.3em}%
+  \setlength{\belowdisplayskip}{0.25em}%
   \begin{columns}[T]
     \column{0.48\textwidth}
-    \textbf{Value function.} Expected total future reward:
-    \[ V^\pi(s)=\mathbb{E}\Big[\sum_{t\ge 0}\gamma^t r_t \;\Big|\; s_0=s\Big] \]
-    \textbf{Bellman equation.} One reward, plus the rest:
-    \[ V(s)=\mathbb{E}\big[r+\gamma V(s')\big] \]
-    \column{0.48\textwidth}
-    If $P$ and the rewards are known, this is a linear system and can be solved directly.
-    \vspace{0.45em}
-
-    In this project we only see sampled episodes. Each step is recorded as $(s,\, r,\, s_{\mathrm{next}},\, \mathrm{done})$.
-    \vspace{0.45em}
-
-    Linear function approximation: many states share the same $d$ learnable weights $\vth \in \mathbb{R}^d$, where $d$ is the feature dimension ($d \ll |S|$). Features $\vphi(s) \in \mathbb{R}^d$ are fixed in advance.
+    \textbf{Exact value method}
+    \begin{itemize}
+      \item The value of a state is its expected total future reward:
+      \[ V^\pi(s)=\mathbb{E}\Big[\sum_{t\ge 0}\gamma^t r_t \;\Big|\; s_0=s\Big] \]
+      \item The Bellman equation splits that into one reward plus the rest:
+      \[ V(s)=\mathbb{E}\big[r+\gamma V(s')\big] \]
+      \item When $P$ and the rewards are known, this is a linear system and can be solved directly.
+    \end{itemize}
+    \column{0.50\textwidth}
+    \textbf{Value-function approximation}
+    \begin{itemize}
+      \item In this project the transitions are unknown. Each step is only a sample $(s,\, r,\, s_{\mathrm{next}},\, \mathrm{done})$.
+      \item One stored number per state does not scale, so $d$ weights represent every state, with $d\ll|S|$:
+      \[ \hat V(s)=\vphi(s)^\top\vth,\qquad \vphi(s)\in\mathbb{R}^d \]
+      \item The features $\vphi(s)$ are fixed in advance. Monte Carlo, TD, and LSTD are three ways to learn $\vth$.
+    \end{itemize}
   \end{columns}
-  \vspace{0.15em}
-  \begin{keyidea}
-    Monte Carlo, TD, and LSTD are three ways to find those weights.
-  \end{keyidea}
 \end{frame}
 
 \begin{frame}{Monte Carlo, TD, and LSTD}
@@ -255,6 +253,8 @@
     \end{column}
   \end{columns}
 \end{frame}
+
+\section{Methodology}
 
 \begin{frame}{Boyan chain and the paper's experiment}
   \speaker{\memberA}
