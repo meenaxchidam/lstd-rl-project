@@ -1,36 +1,40 @@
-# Member B presentation script: TD, experiment, and results
+# Member B speaker script: why MC leads to TD
 
-**Target length:** about 3 minutes. Bracketed text is a presentation cue.
+**Target length:** about 4–5 minutes. The sequence hands off to Member C’s LSTD section.
 
-## Slide 6 — Problem: estimating state values with TD
+## Slide 6 — Why move from Monte Carlo to TD?
 
-“Temporal Difference learning, or TD, estimates how much future reward we can expect from a state. It learns from transitions we observe. After moving from one state to the next, TD combines the reward we just received with its current estimate of the next state’s value. The difference from the current state estimate is the TD error.
+“Monte Carlo and temporal difference both learn values from sampled experience. Monte Carlo waits for the episode to end and uses the actual return. This is unbiased on average, but the return can be noisy because it includes a long sequence of random outcomes. It also cannot update until the episode finishes.
 
-Our problem is to estimate the values of states in the Boyan chain using a compact set of features. We run TD lambda while changing the number of trajectories and the step-size settings. We measure root mean squared error over all 13 states, so a smaller number means a more accurate estimate.
+In our corridor example, A always leads to B with zero reward, and B pays one with probability 0.75. In our small data set, A appears once and that episode loses. Monte Carlo’s one observed return for A is zero. That is a valid sample, but a poor estimate from one visit. Meanwhile B has eight observed plays and an average return of 0.75.
 
-In the full run, the best of the paper’s six decaying step-size schedules reaches RMSE 0.308 at 100 trajectories and 0.0362 at 10,000 trajectories. These are averages over 20 random seeds. Next I’ll show exactly how the update is calculated.”
+TD replaces the unseen rest of the episode with the current estimate of the next state. For A, its target is zero plus the current estimate of B. Once B has been learned, TD can pass that value back to A through the transition. This is bootstrapping. It lowers target variance and can use visits to later states to improve earlier-state estimates. The trade-off is that TD is biased while its next-state estimate is inaccurate. MC would also approach 0.75 with enough visits to A; TD’s advantage here is that it needs fewer direct A samples.”
 
-## Slide 7 — Methodology: TD(lambda) update and parameters
+## Slide 7 — TD(λ) algorithm and the role of λ
 
-“We represent the value estimate as the feature vector for a state multiplied by a weight vector: V-hat of s equals phi of s transposed times theta.
+“We approximate value with features times weights. On each transition, TD computes the error: observed reward plus discounted estimated next value, minus the current value. The eligibility trace z records which features were recently active. Then the error is assigned to those features, weighted by the trace and the learning rate alpha.
 
-For each transition, the TD target is the reward plus gamma times the estimated value of the next state. We subtract the current estimate to get delta, the TD error. The eligibility trace is updated as z equals gamma lambda times the previous trace plus the current state’s feature vector. Then we add alpha times the TD error times the trace to the weights. In the paper-style offline implementation, we sum those weight changes during one trajectory and apply the total when that trajectory ends.
+In our paper-style implementation, we hold the weights fixed during one trajectory, sum the trace-weighted errors, and apply the total update at the end of that trajectory. The trace decays by gamma times lambda, so recent states receive more credit than older states.
 
-Here, phi is the four-feature state representation, theta is the learned weight vector, gamma is the discount factor and is 1, lambda is 0.4, and alpha is the learning rate. The trace z lets an error affect recently visited states, with older states fading by gamma lambda. Our decaying schedule is alpha sub n equals a-zero times n-zero plus 1, divided by n-zero plus n. We test a-zero values 0.01 and 0.1, crossed with n-zero values 100, 1,000, and 1 million. We also test constant alpha values 0.001, 0.003, 0.01, 0.03, 0.1, and 0.3.
+The paper does not give TD three separate views like its later section does for LSTD. TD’s key interpretation is the lambda continuum: lambda zero uses a one-step bootstrapped target; lambda one uses the full Monte Carlo return; values between them combine multi-step targets. This trades off bootstrapping bias against return variance. Averaged over data, TD approaches a fixed point described by d plus C theta equals zero. How quickly it gets there depends on the step-size schedule.”
 
-For a one-step example, suppose the current estimate is 2, the reward is 1, the next-state estimate is 4, and gamma is 0.9. The target is 1 plus 0.9 times 4, or 4.6. The error is 4.6 minus 2, or 2.6. With alpha equal to 0.1 and a one-hot state feature, the new estimate is 2 plus 0.1 times 2.6, which is 2.26.”
+## Slide 8 — TD experiment, results, and computation
 
-## Slide 8 — Results: TD(lambda) on the Boyan chain
+“We evaluate TD on the 13-state Boyan chain, with four linear features, gamma one, lambda 0.4, and 20 random seeds. We report mean RMSE plus or minus standard error over all 13 states. At 100 trajectories, the best tested decaying schedule gets 0.308 plus or minus 0.031, and the best constant rate gets 0.379 plus or minus 0.046. At 10,000 trajectories, those errors are 0.0362 plus or minus 0.0039 and 0.0413 plus or minus 0.0037. The best constant alpha shifts from 0.1 at the smaller data budget to 0.001 at the larger one, showing why tuning matters.
 
-“The experiment uses the 13-state Boyan chain. Each trajectory starts at state 12 and ends at state 0. There are four linearly interpolated state features. We use gamma equal to 1, lambda equal to 0.4, and evaluate RMSE over all 13 states. The code evaluates 20 random seeds and tracks performance from 1 up to 10,000 trajectories.
+These are TD-only results from our TD(lambda) implementation. TD takes order K work per transition and stores order K weights and trace. In our run, the best decaying schedule changed from a-zero 0.1 and n-zero 100 at 100 trajectories to a-zero 0.01 and n-zero 1,000 at 10,000. The best constant alpha shifted from 0.1 to 0.001. That shows how the useful learning rate depends on how much data TD has seen.”
 
-The graph shows the six decaying schedules used in Boyan’s Figure 5. The table gives the best decaying schedule and best constant learning rate at two checkpoints. At 100 trajectories, the best decay is 0.308 plus or minus 0.031, compared with 0.379 plus or minus 0.046 for the best constant rate. At 10,000 trajectories, the best decay is 0.0362 plus or minus 0.0039, and the best constant rate is 0.0413 plus or minus 0.0037.
+## Supplement — What the paper says about TD
 
-The best decaying schedule changes from a-zero 0.1 and n-zero 100 at the earlier checkpoint to a-zero 0.01 and n-zero 1,000 at the later checkpoint. This shows that step-size choice affects the result. Overall, TD’s error drops as it sees more trajectories. The paper reports 10 trials; our run uses 20 seeds and includes six extra constant-rate settings, so these are our measured values under a closely matched setup.”
+“One extra paper detail: TD’s convergence is conditional. With linear value functions, Boyan cites convergence for a suitable decreasing step-size schedule. The sufficient conditions used for the paper’s schedules are that the stepsizes are nonnegative, their sum diverges, and the sum of their squares converges.
 
-## Rehearsal cues
+The paper also points out TD’s limitations: each trajectory updates the weights but leaves no transition statistics behind; replay can reuse the data, but requires repeated passes. Performance can be sensitive to the step-size schedule, initial weights, and feature scaling.
 
-- Follow the order: problem, update method, then measured results.
-- On slide 7, explain the target first, then the error, trace, and weight update.
-- On slide 8, say “lower RMSE means a more accurate estimate” before describing the numbers.
-- Describe the paper connection as a closely matched setup; the values in the table come from our own 20-seed run.
+For its TD experiments, the paper tests six decaying schedules across lambda values zero, point two, point four, point six, point eight, and one, averaging ten trials. Its conclusion about TD is that performance depends critically on the step-size schedule. The next section then introduces LSTD as a different algorithm.”
+
+## Delivery cues
+
+- State MC’s limitation as variance and waiting for the episode, not that MC is incorrect.
+- Use “the lambda continuum,” not “three views of TD.” The paper’s three views are specific to LSTD.
+- Keep the TD experiment slide TD-only; Member C presents LSTD and its computational cost.
+- The extra paper-context slide is unnumbered so it does not change the deck’s frame numbering.

@@ -1,4 +1,4 @@
-"""Refresh Member B's raster slides from the full TD learning-curve run."""
+"""Refresh Member B's MC-to-TD slides in the full presentation."""
 from __future__ import annotations
 
 import os
@@ -14,97 +14,114 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 PPTX = ROOT / "slides/lstd_presentation.pptx"
-DATA = ROOT / "results/raw/learning_curves.npz"
-PLOT = ROOT / "results/figures/fig_td_learning_curves.png"
 INK, BODY, ORANGE, GREEN, MUTED = "#1E2A3A", "#2B2F36", "#E4572E", "#1F7A6D", "#758092"
 
 
-def base(title: str, page: int):
+def base(title: str, page: int, number: bool = True):
     fig = plt.figure(figsize=(13.333, 7.5), dpi=150, facecolor="white")
     fig.text(.07,.94,"02   ━━━   TD(λ)",color=ORANGE,fontsize=11,weight="bold")
     fig.text(.07,.875,title,color=INK,fontsize=22,weight="bold")
     fig.text(.93,.94,"MEMBER B",color=GREEN,fontsize=10,weight="bold",ha="right")
     fig.add_artist(plt.Line2D([.07,.93],[.075,.075],color="#D9DDE3",lw=1))
-    fig.text(.07,.04,"LSTD(λ)  ·  Boyan, ICML 1999",color=MUTED,fontsize=8)
-    fig.text(.93,.04,f"{page} / 20",color=INK,fontsize=9,weight="bold",ha="right")
+    fig.text(.07,.04,"TD(λ)  ·  Member B",color=MUTED,fontsize=8)
+    if number:
+        fig.text(.93,.04,f"{page} / 20",color=INK,fontsize=9,weight="bold",ha="right")
     return fig
 
 
 def slide_problem():
-    f=base("Problem: estimating state values with TD",6)
-    f.text(.08,.78,"Temporal Difference (TD) estimates a state's future reward from sampled transitions. It bootstraps\nfrom its current next-state estimate after each transition.",fontsize=12,color=BODY,linespacing=1.45)
-    f.text(.5,.65,r"TD target $=r_t+\gamma\hat V(s_{t+1})$     TD error $\delta_t=target-\hat V(s_t)$",fontsize=17,color=INK,ha="center")
-    f.text(.08,.52,"Problem",fontsize=14,color=GREEN,weight="bold")
-    f.text(.08,.45,"Estimate values for the 13-state Boyan chain from sampled trajectories. Test how TD(λ)\naccuracy changes with experience and learning-rate choice.",fontsize=11,color=BODY,linespacing=1.5)
-    f.text(.08,.30,"Headline result",fontsize=14,color=ORANGE,weight="bold")
-    f.text(.08,.23,"Best paper-style TD schedule: RMSE 0.308 at 100 trajectories and 0.0362 at 10,000.\nThese are means over 20 seeds; lower RMSE means more accurate state-value estimates.",fontsize=11,color=BODY,linespacing=1.5)
-    f.text(.08,.13,"Next: the TD(λ) update, the experiment settings, and the learning curves.",fontsize=10,color=MUTED)
+    f=base("Why move from Monte Carlo to TD?",6)
+    f.text(.08,.78,"Both estimate future reward from experience, but they use different targets.",fontsize=12,color=BODY)
+    f.text(.08,.68,"MONTE CARLO  ·  wait for the episode",fontsize=12,color=GREEN,weight="bold")
+    f.text(.08,.60,r"$G_t=r_t+\gamma r_{t+1}+\cdots$",fontsize=17,color=INK)
+    f.text(.08,.52,"Uses the actual return: unbiased on average. But a long, random\nfuture makes the target noisy, and learning waits for termination.",fontsize=10.5,color=BODY,linespacing=1.4)
+    f.text(.54,.68,"TEMPORAL DIFFERENCE  ·  learn each step",fontsize=12,color=ORANGE,weight="bold")
+    f.text(.54,.60,r"$r_t+\gamma\hat V(s_{t+1})$",fontsize=17,color=INK)
+    f.text(.54,.52,"Bootstraps from the next-state estimate. It can update before\nthe episode ends and often has lower target variance, at the cost\nof bias while that estimate is inaccurate.",fontsize=10.2,color=BODY,linespacing=1.4)
+    f.text(.08,.36,"Corridor example",fontsize=11,color=GREEN,weight="bold")
+    f.text(.08,.225,"A → B gives 0; B pays 1 with probability .75. In the sample, A is visited once and that\nepisode loses. MC’s one return says 0 for A. TD can use 0 + V(B), borrowing B’s average;\nas B is learned, this reduces the need to revisit A to learn its value.",fontsize=10,color=BODY,linespacing=1.4)
+    f.text(.08,.13,"MC is not wrong: with enough A-visits it averages to the right value. TD’s advantage is faster credit assignment from fewer visits.",fontsize=9,color=MUTED)
     return f
 
 
 def slide_method():
-    f=base("Methodology: TD(λ) update and parameters",7)
-    f.text(.5,.785,r"Value estimate: $\hat V(s)=\phi(s)^\top\theta$",fontsize=16,color=INK,ha="center")
-    f.text(.5,.705,r"TD error: $\delta_t=r_t+\gamma\hat V(s_{t+1})-\hat V(s_t)$",fontsize=16,color=INK,ha="center")
-    f.text(.5,.625,r"Trace: $z_t=\gamma\lambda z_{t-1}+\phi(s_t)$     Update: $\theta\leftarrow\theta+\alpha_n\sum_t\delta_t z_t$",fontsize=15,color=INK,ha="center")
-    f.text(.08,.51,"What the symbols mean",fontsize=12,color=GREEN,weight="bold")
-    f.text(.08,.455,"φ(s): four features for state s     θ: learned weights     γ = 1: discount factor\nλ = 0.4: trace decay     z: recent-state eligibility trace     αₙ: learning rate",fontsize=10.5,color=BODY,linespacing=1.5)
-    f.text(.08,.365,"Experiment procedure and tested step sizes",fontsize=12,color=GREEN,weight="bold")
-    f.text(.08,.315,"For each trajectory, hold θ fixed, sum δₜzₜ, then update θ once. Decay: αₙ=a₀(n₀+1)/(n₀+n),\nwith a₀∈{.01,.1}, n₀∈{100,1,000,1,000,000}. Constant α∈{.001,.003,.01,.03,.1,.3}.",fontsize=9.5,color=BODY,linespacing=1.4)
-    f.text(.08,.205,"Example: current value 2, reward 1, next value 4, γ=.9 → target 4.6, error 2.6.\nWith α=.1 and a one-hot feature, the new value is 2 + .1×2.6 = 2.26.",fontsize=9.5,color=INK,linespacing=1.4)
+    f=base("TD(λ): algorithm and the role of λ",7)
+    f.text(.5,.80,r"Value estimate: $\hat V(s)=\phi(s)^\top\theta$",fontsize=16,color=INK,ha="center")
+    f.text(.5,.70,r"Error: $\delta_t=r_t+\gamma\hat V(s_{t+1})-\hat V(s_t)$",fontsize=15,color=INK,ha="center")
+    f.text(.5,.60,r"Trace: $z_t=\gamma\lambda z_{t-1}+\phi(s_t)$",fontsize=15,color=INK,ha="center")
+    f.text(.5,.51,r"Update: $\theta\leftarrow\theta+\alpha_n\sum_t\delta_tz_t$ per trajectory",fontsize=15,color=ORANGE,ha="center")
+    f.text(.08,.40,"The λ continuum (the paper’s bias–variance trade-off)",fontsize=11.5,color=GREEN,weight="bold")
+    f.text(.08,.35,r"$\lambda=0$: one-step TD target     $0<\lambda<1$: mixtures of multi-step targets     $\lambda=1$: Monte Carlo return",fontsize=10.1,color=BODY)
+    f.text(.08,.26,"There are no three LSTD-style “views” of TD in the paper. The key TD interpretation is this\ncontinuum: more bootstrapping at low λ; more sampled return at high λ.",fontsize=9.5,color=BODY,linespacing=1.35)
+    f.text(.08,.15,r"Expected updates stop at $d+C\theta=0$. TD approaches this fixed point incrementally; its speed and accuracy depend on the step-size schedule.",fontsize=9.5,color=INK)
+    f.text(.08,.095,"The next section starts from this fixed point and shows how LSTD estimates and solves it directly.",fontsize=9,color=MUTED)
     return f
 
 
-def mean_se(a):
-    return np.nanmean(a,axis=0),np.nanstd(a,axis=0,ddof=1)/np.sqrt(np.sum(np.isfinite(a),axis=0))
+def make_td_only_curve():
+    data = np.load(ROOT / "results/raw/learning_curves.npz")
+    checkpoints, lambdas = data["checkpoints"], data["lambdas"]
+    li = int(np.argmin(abs(lambdas - 0.4)))
+    indices = np.where(data["td_schedules"] == "decay")[0]
+    fig, ax = plt.subplots(figsize=(8.2, 4.6), dpi=180)
+    for idx in indices:
+        values = data["td_err"][:, li, idx, :]
+        mean = np.mean(values, axis=0)
+        se = np.std(values, axis=0, ddof=1) / np.sqrt(values.shape[0])
+        label = data["td_labels"][idx].replace("TD ", "")
+        (line,) = ax.plot(checkpoints, mean, lw=1.7, label=label)
+        ax.fill_between(checkpoints, np.maximum(mean-se, 1e-12), mean+se, color=line.get_color(), alpha=.16, lw=0)
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlabel("Number of trajectories"); ax.set_ylabel("RMSE over 13 states")
+    ax.set_title("TD(λ), λ = 0.4: six decaying step-size schedules")
+    ax.grid(True, which="both", alpha=.22); ax.legend(fontsize=7, ncol=2, frameon=False)
+    fig.tight_layout()
+    path = ROOT / "results/figures/fig_td_learning_curves.png"
+    fig.savefig(path, bbox_inches="tight"); plt.close(fig)
+    return path
 
 
-def make_curve(data):
-    PLOT.parent.mkdir(parents=True,exist_ok=True)
-    cps=data['checkpoints']; li=int(np.argmin(abs(data['lambdas']-.4)))
-    ix=np.where(data['td_schedules']=='decay')[0]
-    vals=data['td_err'][:,li,ix,:]
-    m,se=mean_se(vals)
-    fig,ax=plt.subplots(figsize=(8.2,4.6),dpi=180)
-    colors=plt.cm.tab10(np.linspace(0,1,len(ix)))
-    for j,k in enumerate(ix):
-        ax.plot(cps,m[j],lw=1.7,color=colors[j],label=data['td_labels'][k].replace('TD ','').replace('10^','10^'))
-    ax.set_xscale('log'); ax.set_yscale('log'); ax.set_xlabel('Number of trajectories'); ax.set_ylabel('RMSE over 13 states')
-    ax.set_title('TD(λ), λ = 0.4: six decaying step-size schedules')
-    ax.grid(True,which='both',alpha=.22); ax.legend(fontsize=7,ncol=2,frameon=False)
-    fig.tight_layout(); fig.savefig(PLOT,bbox_inches='tight'); plt.close(fig)
-    return PLOT
+def slide_results(data=None):
+    f=base("TD experiment: setup, results, and computation",8)
+    ax=f.add_axes([.07,.255,.48,.53]); ax.imshow(plt.imread(make_td_only_curve())); ax.axis('off')
+    f.text(.59,.79,"Experimental setup",fontsize=11,color=GREEN,weight="bold")
+    f.text(.59,.64,"Boyan chain: 13 states, 4 features\nγ=1, λ=.4; 20 random seeds\nRMSE across all 13 states",fontsize=9.3,color=BODY,linespacing=1.4)
+    f.text(.59,.54,"Measured RMSE ± SE",fontsize=10,color=INK,weight="bold")
+    f.text(.80,.495,"100 traj.",fontsize=8.5,color=MUTED,ha='center'); f.text(.92,.495,"10,000",fontsize=8.5,color=MUTED,ha='center')
+    f.text(.59,.45,"Best decaying TD",fontsize=8.7,color=BODY); f.text(.80,.45,".308 ± .031",fontsize=8.2,color=BODY,ha='center'); f.text(.92,.45,".0362 ± .0039",fontsize=8.2,color=BODY,ha='center')
+    f.text(.59,.41,"Best constant TD",fontsize=8.7,color=BODY); f.text(.80,.41,".379 ± .046",fontsize=8.2,color=BODY,ha='center'); f.text(.92,.41,".0413 ± .0037",fontsize=8.2,color=BODY,ha='center')
+    f.text(.59,.35,"TD-only takeaway",fontsize=10,color=GREEN,weight="bold")
+    f.text(.59,.275,"Best decay changed from (a₀,n₀)=(.1,100) at 100\ntrajectories to (.01,1,000) at 10,000. Best constant\nα shifted .1 → .001. Step-size choice matters.",fontsize=8.8,color=BODY,linespacing=1.4)
+    f.text(.08,.17,"TD(λ) costs O(K) work per transition and O(K) weight/trace storage. Our run tests six\ndecaying schedules and six constant α settings; the best schedule changes with data budget.",fontsize=9,color=INK,linespacing=1.35)
+    return f
 
 
-def slide_results(data):
-    f=base("Results: TD(λ) on the Boyan chain",8)
-    ax=f.add_axes([.07,.23,.53,.54]); ax.imshow(plt.imread(PLOT)); ax.axis('off')
-    f.text(.63,.78,"Setup",fontsize=12,color=INK,weight="bold")
-    f.text(.63,.725,"13 states; start at 12, terminal state 0\n4 interpolated features; γ=1, λ=.4\n20 seeds; RMSE over all states",fontsize=9,color=BODY,linespacing=1.45)
-    f.text(.63,.59,"Mean RMSE ± standard error",fontsize=10,color=INK,weight="bold")
-    f.text(.79,.545,"100 traj.",fontsize=8,color=MUTED,ha='center'); f.text(.91,.545,"10,000",fontsize=8,color=MUTED,ha='center')
-    cps=data['checkpoints']; li=int(np.argmin(abs(data['lambdas']-.4)))
-    for row,(sched,label,y) in enumerate([('decay','Best decay',.49),('constant','Best constant',.425)]):
-        settings=data['td_schedules']==sched; results=[]; configs=[]
-        for n in [100,10000]:
-            ci=int(np.where(cps==n)[0][0]); a=data['td_err'][:,li,settings,ci]
-            mn,se=mean_se(a); j=int(np.argmin(mn)); results.append(f"{mn[j]:.3f} ± {se[j]:.3f}"); configs.append(np.where(settings)[0][j])
-        f.text(.63,y,label,fontsize=8.7,color=BODY)
-        f.text(.79,y,results[0],fontsize=8.1,color=BODY,ha='center'); f.text(.91,y,results[1],fontsize=8.1,color=BODY,ha='center')
-    f.text(.63,.335,"Best settings",fontsize=10,color=GREEN,weight='bold')
-    f.text(.63,.29,"Decay: (a₀,n₀)=(.1,100) → (.01,1,000)\nConstant α: .1 → .001",fontsize=8.4,color=BODY,linespacing=1.5)
-    f.text(.63,.16,"Paper: 10 trials, six decay schedules. Our run: 20 seeds,\nsame six decays plus six constant rates.",fontsize=7.6,color=MUTED,linespacing=1.4)
+def slide_td_paper_findings():
+    f=base("What Boyan’s paper says about TD",9,number=False)
+    f.text(.08,.78,"The paper studies TD(λ) as an incremental value-learning method.",fontsize=11.5,color=BODY)
+    f.text(.08,.69,"CONVERGENCE",fontsize=11,color=GREEN,weight="bold")
+    f.text(.08,.55,"With linear value functions, TD converges under a suitable\ndiminishing step-size schedule. The paper’s sufficient conditions\nare αₙ ≥ 0, Σαₙ = ∞, and Σαₙ² < ∞.",fontsize=9.8,color=BODY,linespacing=1.4)
+    f.text(.08,.42,"LIMITATIONS",fontsize=11,color=ORANGE,weight="bold")
+    f.text(.08,.29,"After each trajectory, ordinary TD keeps its weights but no\ntransition statistics; replay must revisit saved data. Results are\nsensitive to step-size choice, initialization, and feature scale.",fontsize=9.6,color=BODY,linespacing=1.4)
+    f.text(.55,.69,"PAPER’S EXPERIMENT",fontsize=11,color=GREEN,weight="bold")
+    f.text(.55,.55,"Six decaying step-size schedules; λ = 0, .2, .4, .6, .8, 1;\n10 trials. Schedules use αₙ = a₀(n₀+1)/(n₀+n), with\na₀ ∈ {.01, .1} and n₀ ∈ {100, 1,000, 1,000,000}.",fontsize=9.5,color=BODY,linespacing=1.4)
+    f.text(.55,.42,"PAPER’S TD FINDING",fontsize=11,color=ORANGE,weight="bold")
+    f.text(.55,.29,"The paper reports that TD performance depends critically\non the step-size schedule. Its tested schedules meet the\nconvergence conditions, yet their finite-data learning curves differ.",fontsize=9.5,color=BODY,linespacing=1.4)
+    f.text(.08,.13,"This slide summarizes the paper’s TD analysis; the preceding experiment slide reports our TD-only 20-seed run at λ = .4.",fontsize=9,color=MUTED)
     return f
 
 
 def main():
-    if not PPTX.exists() or not DATA.exists():
-        raise SystemExit("Run python3 -m src.run_experiment --experiment learning_curves first")
-    data=np.load(DATA); make_curve(data)
-    figures=[slide_problem(),slide_method(),slide_results(data)]
+    if not PPTX.exists():
+        raise SystemExit(f"Missing presentation: {PPTX}")
+    figures=[slide_problem(),slide_method(),slide_results()]
+    paper_fig=slide_td_paper_findings()
+    paper_fig.savefig(ROOT / "slides/member_b_td_paper_findings.png",dpi=150,facecolor='white')
+    plt.close(paper_fig)
     with tempfile.TemporaryDirectory() as td:
-        repl={f"ppt/media/image{i}.png":None for i in range(6,9)}
-        for i,fig in enumerate(figures,6):
+        # PDF page 8 is the section 02 divider; Member B's content is pages 9–11.
+        repl={f"ppt/media/image{i}.png":None for i in range(9,12)}
+        for i,fig in enumerate(figures,9):
             p=Path(td)/f"slide{i}.png"; fig.savefig(p,dpi=150,facecolor='white'); plt.close(fig); repl[f"ppt/media/image{i}.png"]=p
         out=Path(td)/"updated.pptx"
         with zipfile.ZipFile(PPTX) as src,zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as dst:
@@ -112,7 +129,7 @@ def main():
                 if item.filename in repl: dst.write(repl[item.filename],item.filename)
                 else: dst.writestr(item,src.read(item.filename))
         os.replace(out,PPTX)
-    print(f"Updated Member B slides and saved TD plot: {PPTX}")
+    print(f"Updated Member B MC-to-TD slides on pages 9–11: {PPTX}")
 
 
 if __name__=='__main__': main()
