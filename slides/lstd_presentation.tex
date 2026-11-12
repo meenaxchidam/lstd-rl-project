@@ -10,7 +10,7 @@
 \usepackage[most]{tcolorbox}
 \usepackage{fontawesome5}
 \usepackage{appendixnumberbeamer}
-\graphicspath{{../results/figures/}}
+\graphicspath{{figures/}}
 
 % ---- fill in team member names ------------------------------------------
 \newcommand{\memberA}{Member A}
@@ -379,28 +379,27 @@
 % =========================================================================
 \section{LSTD($\lambda$)}
 
-\begin{frame}{Where does TD($\lambda$) converge?}
+\begin{frame}{Motivation for LSTD}
   \speaker{\memberC}
   \begin{itemize}
-    \item Averaged over trajectories, one TD($\lambda$) pass changes $\vth$ by
-      \[ \mathbb{E}[\Delta\vth] = \alpha\,(\mathbf{d} + C\vth), \quad
-        \mathbf{d} = \mathbb{E}\Big[\textstyle\sum_t \vz_t r_t\Big], \quad
-        C = \mathbb{E}\Big[\textstyle\sum_t \vz_t\big(\gamma\vphi_{t+1} - \vphi_t\big)^\top\Big] \]
-    \item TD stops moving when
-      \[ \boxed{\mathbf{d} + C\vth = 0} \]
-    \item $C$ is negative definite $\Rightarrow$ unique fixed point (Tsitsiklis \& Van Roy).
-    \item \hl{TD is stochastic gradient descent on a $K\times K$ linear system} --- it never writes the system down.
+    \item For a fixed policy, learn weights in $\hat V(s)=\vphi(s)^\top\vth$.
+    \item TD changes these weights through incremental updates. Its step-size schedule affects learning speed and stability.
+    \item Averaged over trajectories, the update has a linear form:
+      \[ \mathbb{E}[\Delta\vth\mid\vth]=\alpha\,(\mathbf{d}+C\vth). \]
+      Here $\mathbf{d}$ summarizes rewards and $C\vth$ the value-prediction contribution.
+    \item At the fixed point, the \emph{expected} corrections balance:
+      \[ \boxed{\mathbf{d}+C\vth=0}. \]
   \end{itemize}
-  \vspace{0.2em}
   \begin{keyidea}
-    \textbf{Idea:} estimate $\mathbf{d}$ and $C$ from data and solve the system directly.
+    \textbf{LSTD:} estimate this balance from experience and solve it directly.
   \end{keyidea}
+  \note{Bridge from Member B: TD approaches a fixed point through stochastic updates. For the paper's episode-wise TD, weights stay fixed within an episode. Under the standard coverage, feature and step-size assumptions, the expected system has a unique stable solution. Individual sample corrections need not vanish. Source: Boyan (1999), Sections 1--2, Equation 1.}
 \end{frame}
 
 \begin{frame}{The LSTD($\lambda$) algorithm (paper Fig.~2)}
   \speaker{\memberC}
   \begin{columns}[T]
-    \column{0.5\textwidth}
+    \column{0.54\textwidth}
     \begin{block}{LSTD($\lambda$)}
       \small
       $A \leftarrow 0$, $\mathbf{b} \leftarrow 0$\\
@@ -410,89 +409,101 @@
       \qquad $\vz \leftarrow \gamma\lambda\vz + \vphi_t$\\
       \qquad $A \leftarrow A + \vz\,(\vphi_t - \gamma\vphi_{t+1})^\top$\\
       \qquad $\mathbf{b} \leftarrow \mathbf{b} + \vz\, r_t$\\
-      whenever needed: $\vth = A^{-1}\mathbf{b}$
+      when weights are needed: solve $A\vth=\mathbf{b}$
     \end{block}
-    \column{0.47\textwidth}
+    \column{0.43\textwidth}
     \begin{itemize}
-      \item After $n$ trajectories: $\mathbf{b}\approx n\mathbf{d}$, $A \approx -nC$
-      \item $\Rightarrow$ $A^{-1}\mathbf{b}$ estimates TD's fixed point
-      \item \hl{No step size, no initial $\vth$}
-      \item Invariant to feature scaling
-      \item Keeps \emph{all} data in $A$, $\mathbf{b}$
-      \item Singular $A$ (too little data): paper uses SVD; we use \texttt{solve} with an SVD fallback
+      \item $\vz$ remembers previously visited features within the episode.
+      \item Keep $A,\mathbf{b}$ across episodes. Reset only $\vz$.
+      \item After $n$ episodes: $\mathbf{b}/n\approx\mathbf{d}$ and $A/n\approx-C$.
+      \item \hl{No TD step size or initial weight guess}
+      \item Zero next-state features at termination.
     \end{itemize}
   \end{columns}
-\end{frame}
-
-\begin{frame}{Three views of LSTD($\lambda$) (paper Secs.~2--3)}
-  \speaker{\memberC}
-  \begin{enumerate}
-    \item \textbf{$\lambda=0$:} exactly Bradtke \& Barto's LSTD (1996), with a much simpler derivation.
-    \item \textbf{$\lambda=1$:} least-squares regression of features onto Monte-Carlo returns,
-      built \emph{incrementally} (telescoping: $A = \sum_t \vphi_t\vphi_t^\top$, $\mathbf{b} = \sum_t \vphi_t G_t$).
-    \item \textbf{Model-based view:} with one feature per state, LSTD(0) accumulates
-      \[ A = N - C_{\text{count}}, \quad \mathbf{b} = \mathbf{s}
-        \;\Rightarrow\; \vth = (N - C_{\text{count}})^{-1}\mathbf{s}, \]
-      which is exactly \hl{``count transitions, build the empirical Markov chain, solve its Bellman equations''}.
-  \end{enumerate}
   \vspace{0.3em}
-  \begin{block}{Corridor example, one pass over the 8 episodes}
-    LSTD(0): $\hat V(A) = 0.75$ (= TD's limit).\quad
-    LSTD(1): $\hat V(A) = 0$ (= MC).\quad
-    TD(0) needs $\sim$2000 replays with $\alpha = 0.01$ to reach 0.75.\\
-    \small All three equivalences are checked by unit tests in our repo.
-  \end{block}
+  \small Implementation: \texttt{solve}; SVD-based least-squares fallback if the direct solve fails.
+  \note{Explain the sign: A uses current minus discounted next features, whereas C uses the opposite order. The sample system estimates the expected TD fixed point. A is K by K; b, z and theta have length K. The paper uses gamma=1; the slide includes discounting. Statistics retain each observation's contribution, not a recoverable copy of every trajectory. Source: Boyan (1999), Equation 2 and Figure 2; src/lstd.py.}
 \end{frame}
 
-\begin{frame}{Computational cost and recursive LSTD}
+\begin{frame}{Why use LSTD instead of TD?}
+  \speaker{\memberC}
+  \begin{columns}[T]
+    \column{0.43\textwidth}
+    \begin{itemize}
+      \item \textbf{Data efficiency:} fewer trajectories than tested TD schedules on the Boyan chain.
+      \item \textbf{No TD step-size schedule:} solve the collected system directly.
+      \item Useful when observations are costly and the feature count is modest.
+    \end{itemize}
+    \column{0.54\textwidth}
+    \begin{block}{Illustrative corridor example}
+      \small
+      {\centering
+        \begin{tikzpicture}
+          \node[st,minimum size=5mm,label=below:{\scriptsize corridor}] (A) {A};
+          \node[st,minimum size=5mm,right=1.2cm of A,label=below:{\scriptsize machine}] (B) {B};
+          \node[draw=ink,thick,rounded corners,right=1.2cm of B,font=\small] (E) {end};
+          \draw[arr] (A) -- node[above]{\scriptsize $r=0$} (B);
+          \draw[arr] (B) -- node[above]{\scriptsize $r=0$ or $1$} (E);
+        \end{tikzpicture}
+      \par}\vspace{0.4em}
+      \textbf{8 episodes:} one starts at A and returns 0. Seven start at B: six pay 1, one pays 0.\\[0.4em]
+      \textbf{LSTD(0), one pass and solve:}\\
+      $\hat V(B)=6/8=0.75$,\quad $\hat V(A)=0+\hat V(B)=0.75$.\\[0.4em]
+      TD(0) approaches this answer through repeated updates.
+    \end{block}
+  \end{columns}
+  \note{Introduce the corridor before giving the answer: A gives no reward and leads to B; B pays 0 or 1 and terminates. The first episode starts at A and has payout 0. The other seven start at B, with six wins and one zero, so there are eight visits to B in total. LSTD(0) estimates B as 6/8 and solves A=0+B, obtaining .75 for both. Ordinary TD starts with B unknown when it first visits A; replay lets the improved estimate of B reach A through later updates. This is an illustrative fixed dataset evaluated with our implementations, not Boyan's experimental environment. Monte Carlo and LSTD(1) fit the one observed return from A as 0. About 2000 deterministic replays with alpha=.01 yield approximately .7499, not an exact or universal replay requirement. The paper's data-efficiency result is on the Boyan chain; it does not guarantee universal superiority or lower runtime. Sources: Boyan (1999), Sections 2, 4--5; docs/MC_vs_TD_vs_LSTD.md.}
+\end{frame}
+
+\begin{frame}{Recursive LSTD}
+  \speaker{\memberC}
+  \begin{itemize}
+    \item Maintain $B=A^{-1}$ to avoid repeated full solves.
+    \item Each transition changes $A$ by one outer product:
+      \[ A_{\mathrm{new}}=A+\vz\mathbf{u}^{\top},\qquad
+         \mathbf{u}=\vphi_t-\gamma\vphi_{t+1}. \]
+  \end{itemize}
+  \begin{block}{Sherman--Morrison inverse update}
+    \[\boxed{B\leftarrow B-\frac{B\vz\,\mathbf{u}^{\top}B}{1+\mathbf{u}^{\top}B\vz}}\]
+    Then $\mathbf{b}\leftarrow\mathbf{b}+\vz r_t$ and obtain weights using $\vth=B\mathbf{b}$.
+  \end{block}
+  \begin{keyidea}
+    Maintain the inverse instead of solving from scratch.
+  \end{keyidea}
+  \note{An inverse of the initially zero A does not exist. Our implementation initializes B0=delta I, equivalent to A0=I/delta and batch regularization epsilon=1/delta. Here delta is an initialization parameter, not the TD error. Recursive and batch results match when their regularization is aligned, subject to numerical precision and valid inverse updates. The paper mentions recursive least-squares as an option; our code implements Sherman--Morrison explicitly. Sources: Boyan (1999), end of Section 2; src/lstd.py, recursive_lstd.}
+\end{frame}
+
+\begin{frame}{Computational cost}
   \speaker{\memberC}
   \begin{columns}[c]
-    \column{0.47\textwidth}
+    \column{0.40\textwidth}
     \small
+    \setlength{\tabcolsep}{3pt}
     \begin{tabular}{@{}lcc@{}}
       \toprule
-      & per step & per solve \\
+      & per step & full solve \\
       \midrule
       TD($\lambda$) & $O(K)$ & --- \\
-      LSTD($\lambda$) & $O(K^2)$ & $O(K^3)$ \\
+      Batch LSTD & $O(K^2)$ & $O(K^3)$ \\
       Recursive LSTD & $O(K^2)$ & --- \\
       \bottomrule
     \end{tabular}
-    \vspace{0.6em}
+    \vspace{0.7em}
 
-    \textbf{Recursive LSTD} keeps $B = A^{-1}$ up to date (Sherman--Morrison), $\mathbf{u} = \vphi_t - \gamma\vphi_{t+1}$:
-    \[ B \leftarrow B - \frac{B\vz\,\mathbf{u}^\top B}{1 + \mathbf{u}^\top B\vz} \]
-    Start $B_0 = \delta I$ $\Leftrightarrow$ ridge with $\epsilon = 1/\delta$.
-    \column{0.51\textwidth}
-    \includegraphics[width=\linewidth]{fig4_timing.png}
-    \small At $d=256$: TD 2.7\,ms vs.\ LSTD 64\,ms (200 trajectories).
+    $K=d$: number of features.\\[0.4em]
+    \textbf{Step:} one transition.\\
+    \textbf{Episode:} a complete trajectory.\\[0.4em]
+    A dash means no full solve.
+    \column{0.57\textwidth}
+    \includegraphics[width=\linewidth,height=4.1cm,keepaspectratio]{fig4_timing.png}\\
+    \scriptsize 200 episodes. At $K=256$: TD 2.7\,ms; batch LSTD (one final solve) 64\,ms.
   \end{columns}
-\end{frame}
-
-\begin{frame}{Experimental setup}
-  \speaker{\memberC}
-  \begin{columns}[T]
-    \column{0.5\textwidth}
-    \textbf{Reproduction (paper Sec.~4)}
-    \begin{itemize}
-      \item Boyan chain, $\lambda \in \{0, 0.2, \ldots, 1\}$
-      \item Up to $10^4$ trajectories
-      \item LSTD vs.\ 12 TD configurations
-      \item RMSE over all 13 states
-      \item \textbf{20 seeds} (paper: 10), mean $\pm$ 1 SE
-      \item Same episodes for every algorithm within a seed (common random numbers)
-    \end{itemize}
-    \column{0.47\textwidth}
-    \textbf{Implementation}
-    \begin{itemize}
-      \item Python + NumPy, CPU only
-      \item One module per member, frozen interfaces
-      \item 47 unit tests, incl.\ paper's equivalences
-      \item Config-driven runner, full sweep $\approx$ 30\,s on a laptop
-    \end{itemize}
-    \vspace{0.3em}
-    \textbf{Fair comparison:} TD is shown with its \emph{best} step size --- even an oracle that picks the best of 12 configurations separately at every $n$.
-  \end{columns}
+  \vspace{0.5em}
+  \small
+  \textbf{Green:} one solve per episode. \textbf{Red:} an inverse update per transition.\\
+  At small $K$, a cheap solve can beat several inverse updates.\\[0.3em]
+  \hl{Tradeoff: accuracy per observation versus computation.}
+  \note{Blue is TD. Orange is batch LSTD with one final solve. Green solves after every episode. Red is recursive LSTD, updating after every transition. At large feature counts the repeated cubic solves grow expensive; at small counts their constants and lower frequency can make green faster than red. Recursive is not automatically faster than orange. This is a processing-time benchmark on a fixed dataset, not an accuracy comparison. Source: Boyan (1999), Section 2; src/run_experiment.py, run_timing; results/figures/fig4_timing.png.}
 \end{frame}
 
 % =========================================================================
@@ -685,6 +696,52 @@
   \vspace{0.6em}
 
   \texttt{python -m src.run\_experiment \&\& python -m src.plot\_results}
+\end{frame}
+
+\begin{frame}{Backup: three views of LSTD($\lambda$)}
+  \speaker{\memberC}
+  \begin{enumerate}
+    \item \textbf{$\lambda=0$:} exactly Bradtke \& Barto's LSTD (1996), with a much simpler derivation.
+    \item \textbf{$\lambda=1$:} least-squares regression of features onto Monte-Carlo returns,
+      built \emph{incrementally} (telescoping: $A = \sum_t \vphi_t\vphi_t^\top$, $\mathbf{b} = \sum_t \vphi_t G_t$).
+    \item \textbf{Model-based view:} with one feature per state, LSTD(0) accumulates
+      \[ A = N - C_{\text{count}}, \quad \mathbf{b} = \mathbf{s}
+        \;\Rightarrow\; \vth = (N - C_{\text{count}})^{-1}\mathbf{s}, \]
+      which is exactly \hl{``count transitions, build the empirical Markov chain, solve its Bellman equations''}.
+  \end{enumerate}
+  \vspace{0.3em}
+  \begin{block}{Corridor example, one pass over the 8 episodes}
+    LSTD(0): $\hat V(A)=0.75$ (empirical TD fixed point).\quad
+    LSTD(1): $\hat V(A) = 0$ (= MC).\quad
+    TD(0) gives $\hat V(A)\approx0.75$ after 2000 replays with $\alpha=0.01$ in this example.\\
+    \small The model-based and Monte-Carlo equivalences have explicit unit tests.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Backup: experimental setup}
+  \speaker{\memberC}
+  \begin{columns}[T]
+    \column{0.5\textwidth}
+    \textbf{Reproduction (paper Sec.~4)}
+    \begin{itemize}
+      \item Boyan chain, $\lambda \in \{0, 0.2, \ldots, 1\}$
+      \item Up to $10^4$ trajectories
+      \item LSTD vs.\ 12 TD configurations
+      \item RMSE over all 13 states
+      \item \textbf{20 seeds} (paper: 10), mean $\pm$ 1 SE
+      \item Identical episodes per seed for all algorithms
+    \end{itemize}
+    \column{0.47\textwidth}
+    \textbf{Implementation}
+    \begin{itemize}
+      \item Python + NumPy, CPU only
+      \item Separate modules with shared interfaces
+      \item Module and end-to-end tests
+      \item Config-driven experiment runner
+    \end{itemize}
+    \vspace{0.3em}
+    \textbf{Fair comparison:} every algorithm receives the same data; TD step sizes are swept.
+  \end{columns}
 \end{frame}
 
 \end{document}
