@@ -1,6 +1,7 @@
 """Convert the compiled Beamer PDF into a 16:9 PowerPoint deck (one full-slide image per page).
 
     cd slides && python make_pptx.py          # needs only pdftoppm (poppler); no Python packages
+    cd slides && python make_pptx.py <stem>   # convert another compiled deck (<stem>.pdf)
 
 The .pptx is written directly as Office Open XML, so the LaTeX maths and figures look identical.
 Edit the .tex, recompile the PDF, then rerun this script.
@@ -12,8 +13,9 @@ import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-PDF = HERE / "lstd_presentation.pdf"
-PPTX = HERE / "lstd_presentation.pptx"
+STEM = sys.argv[1] if len(sys.argv) > 1 else "lstd_presentation"
+PDF = HERE / f"{STEM}.pdf"
+PPTX = HERE / f"{STEM}.pptx"
 DPI = 250
 CX, CY = 12192000, 6858000  # 13.333 x 7.5 in (16:9) in EMU
 

@@ -105,10 +105,12 @@ def plot_learning_curves(cfg: dict, raw: Path, figs: Path) -> list[Path]:
         for j, kk in enumerate(decay_idx):
             _band(ax, cps, td[:, li, kk], labels[kk], color=f"C{j}")
         _band(ax, cps, lstd[:, li], "Least-Squares TD", color="k", lw=2)
-        ax.set(xscale="log", yscale="log", xlabel="trajectory number", ylabel="RMS error of V",
-               title=f"Replica of paper Fig. 5 (λ = {lam:g})")
+        ax.set(xscale="log", yscale="log")
+        ax.set_xlabel("number of trajectories", fontsize=12)
+        ax.set_ylabel("RMS error of V", fontsize=12)
+        ax.tick_params(labelsize=11)
         ax.grid(True, which="both", alpha=0.3)
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=9, loc="lower left")
         saved.append(_save(fig, figs / "fig1b_paper_fig5.png"))
 
     summary_n = [n for n in pc["summary_n"] if n <= cps[-1]]
@@ -145,16 +147,18 @@ def plot_learning_curves(cfg: dict, raw: Path, figs: Path) -> list[Path]:
         algos = [(labels[kk], td[:, :, kk]) for kk in decay_idx] + [("Least-Squares TD", lstd)]
         step = np.min(np.diff(lambdas)) if len(lambdas) > 1 else 1.0
         offsets = np.linspace(-0.35, 0.35, len(algos)) * step
-        fig, ax = plt.subplots(figsize=(7, 4.5))
+        fig, ax = plt.subplots(figsize=(6.5, 4.2))
         for j, (label, errs) in enumerate(algos):
             m = _finite(errs.mean(axis=0))  # (L, C)
             color = "k" if j == len(algos) - 1 else f"C{j}"
             ax.vlines(lambdas + offsets[j], m[:, hi], m[:, lo], color=color, lw=3, label=label)
-        ax.set(yscale="log", xlabel="λ", ylabel=f"RMS error at traj #{cps[lo]} (top) → #{cps[hi]} (bottom)",
-               title="Replica of paper Fig. 6")
+        # Colours match fig1b, whose legend names the six schedules.
+        ax.set(yscale="log")
+        ax.set_xlabel("λ", fontsize=12)
+        ax.set_ylabel(f"RMS error at {cps[lo]} → {cps[hi]} traj.", fontsize=12)
+        ax.tick_params(labelsize=11)
         ax.set_xticks(lambdas)
         ax.grid(True, which="both", alpha=0.3)
-        ax.legend(fontsize=7)
         saved.append(_save(fig, figs / "fig3b_paper_fig6.png"))
     return saved
 
