@@ -354,6 +354,7 @@
 
 \begin{frame}{Why move from Monte Carlo to TD?}
   \speaker{\memberB}
+  \small
   \begin{columns}[T]
     \column{0.48\textwidth}
     \begin{block}{Monte Carlo: wait for the episode}
@@ -374,6 +375,7 @@
 
 \begin{frame}{TD($\lambda$): the update and the role of $\lambda$}
   \speaker{\memberB}
+  \footnotesize
   \[\hat V(s)=\vphi(s)^\top\vth,\qquad
     \delta_t=r_t+\gamma\hat V(s_{t+1})-\hat V(s_t),\qquad
     \vz_t=\gamma\lambda\vz_{t-1}+\vphi(s_t)\]
@@ -399,33 +401,35 @@
 \begin{frame}{TD experiment: setup, results, and computation}
   \speaker{\memberB}
   \begin{columns}[c]
-    \column{0.50\textwidth}
-    \includegraphics[width=\linewidth]{../results/figures/fig1b_paper_fig5.png}
-    \column{0.47\textwidth}
-    \small
+    \column{0.43\textwidth}
+    \includegraphics[width=\linewidth]{fig1b_paper_fig5.png}
+    \column{0.54\textwidth}
+    \footnotesize
     \textbf{Setup:} 13 states, 4 features, $\gamma=1$, $\lambda=0.4$; 20 seeds.\\
     Mean RMSE $\pm$ standard error over all states.\\[0.2em]
+    {\footnotesize\setlength{\tabcolsep}{3pt}
     \begin{tabular}{@{}lcc@{}}
       \toprule
-      & 100 trajectories & 10,000 trajectories \\
+      & 100 traj. & 10,000 traj. \\
       \midrule
       Best decaying TD & $0.308\pm0.031$ & $0.0362\pm0.0039$ \\
       Best constant-step TD & $0.379\pm0.046$ & $0.0413\pm0.0037$ \\
       \bottomrule
-    \end{tabular}\\[0.4em]
+    \end{tabular}}\\[0.4em]
     Best decay: $(a_0,n_0)=(0.1,100)$ at 100; $(0.01,1000)$ at 10,000.\\
     Best constant rate: $\alpha=0.1$ at 100; $\alpha=0.001$ at 10,000.\\[0.2em]
     \scriptsize Paper Fig. 5 reports 10 trials and six decays; our run uses 20 seeds and also tests six constant rates.
   \end{columns}
   \vspace{0.2em}
   \begin{keyidea}
-    \small
+    \footnotesize
     Best decay changed from $(a_0,n_0)=(0.1,100)$ at 100 trajectories to $(0.01,1000)$ at 10,000; best constant $\alpha$ shifted from $0.1$ to $0.001$. TD costs $O(K)$ per transition and stores $O(K)$ weights/traces. Our run tests six decaying schedules and six constant $\alpha$ settings.
   \end{keyidea}
 \end{frame}
 
 \begin{frame}[noframenumbering]{What Boyan's paper says about TD}
   \speaker{\memberB}
+  \small
   \begin{columns}[T]
     \column{0.48\textwidth}
     \textbf{Convergence.} With linear value functions, TD converges under a suitable diminishing step-size schedule. The paper's sufficient conditions are $\alpha_n\geq0$, $\sum_n\alpha_n=\infty$, and $\sum_n\alpha_n^2<\infty$.
