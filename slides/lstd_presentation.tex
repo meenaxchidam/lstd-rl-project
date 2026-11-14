@@ -52,7 +52,7 @@
 \setbeamertemplate{description item}{\color{second}\bfseries\insertdescriptionitem}
 
 \newcommand{\twodigit}[1]{\ifnum#1<10 0\fi\number#1}
-\newcommand{\sectionspeaker}{\ifcase\value{section}\or\memberA\or\memberB\or\memberC\or\memberD\fi}
+\newcommand{\sectionspeaker}{\ifcase\value{section}\or\memberA\or\memberA\or\memberA\or\memberB\or\memberC\or\memberD\fi}
 \newif\ifbackup
 
 \makeatletter
@@ -74,16 +74,7 @@
 }
 \makeatother
 
-\setbeamertemplate{footline}{%
-  \hspace*{1.1cm}%
-  \begin{minipage}[b][0.55cm][t]{\dimexpr\paperwidth-2.2cm\relax}%
-    {\color{hair}\rule{\linewidth}{0.5pt}}\par\vspace{3pt}%
-    \usebeamerfont{footline}\usebeamercolor[fg]{footline}%
-    LSTD($\lambda$)\enspace\textperiodcentered\enspace Boyan, ICML 1999%
-    \hfill\insertsectionnavigationhorizontal{0.6\linewidth}{}{}\hfill
-    {\color{ink}\bfseries\insertframenumber}\,/\,\inserttotalframenumber
-  \end{minipage}%
-}
+\setbeamertemplate{footline}{}
 
 \tcbset{flatbox/.style={enhanced,frame hidden,arc=0pt,outer arc=0pt,boxsep=0pt,
   left=8pt,right=8pt,top=5pt,bottom=5pt,before skip=4pt,after skip=4pt,before upper=\raggedright}}
@@ -103,6 +94,7 @@
 \newcommand{\darkbg}{\fill[ink] (current page.south west) rectangle (current page.north east);}
 
 \AtBeginSection[]{%
+  \ifnum\value{section}<4\else
   \begin{frame}[plain,noframenumbering]
   \begin{tikzpicture}[remember picture,overlay]
     \darkbg
@@ -112,12 +104,12 @@
       at ([xshift=1.1cm,yshift=-0.35cm]current page.west) {\insertsectionhead};
     \node[anchor=north west,inner sep=0pt,text=white!60!ink,font=\small]
       at ([xshift=1.1cm,yshift=-1.6cm]current page.west) {\faMicrophone\enspace\sectionspeaker};
-    \foreach \k in {1,...,4} {
+    \foreach \k in {1,...,6} {
       \ifnum\k=\value{section}\def\barcol{accent}\else\def\barcol{white!25!ink}\fi
       \fill[\barcol] ([xshift=1.1cm+(\k-1)*1.0cm,yshift=1.0cm]current page.south west) rectangle ++(0.8cm,0.08cm);
     }
   \end{tikzpicture}
-  \end{frame}}
+  \end{frame}\fi}
 % =========================================================================
 
 \newcommand{\speaker}[1]{\framesubtitle{#1}}
@@ -138,22 +130,6 @@
 \begin{frame}[plain,noframenumbering]
   \begin{tikzpicture}[remember picture,overlay]
     \darkbg
-    % motif: the 13-state Boyan chain bending around the bottom-right corner
-    \begin{scope}[shift={(current page.south east)}]
-      \foreach \i in {0,...,12} {\coordinate (c\i) at ({96+\i*6}:5.6cm);}
-      \foreach \i [evaluate=\i as \j using int(\i+1)] in {0,...,11}
-        \draw[white!22!ink,line width=0.8pt] (c\i) -- (c\j);
-      \foreach \i [evaluate=\i as \j using int(\i+2)] in {0,...,10}
-        \draw[white!14!ink,line width=0.6pt] (c\i) to[bend left=40] (c\j);
-      \foreach \i in {0,...,12} {
-        \pgfmathtruncatemacro{\mix}{100-\i*7}
-        \fill[accent!\mix!second] (c\i) circle (0.16cm);
-      }
-      \draw[white!70!ink,line width=0.6pt] (c12) circle (0.26cm);
-    \end{scope}
-    \node[anchor=north west,inner sep=0pt,text=accent,font=\scriptsize\bfseries]
-      at ([xshift=1.1cm,yshift=-0.9cm]current page.north west)
-      {E1 277 \textperiodcentered{} COURSE PROJECT \textperiodcentered{} PAPER \#22};
     \node[anchor=north west,inner sep=0pt,text=white,text width=10cm,align=left,
           font=\fontsize{28}{32}\selectfont\bfseries]
       at ([xshift=1.1cm,yshift=-1.6cm]current page.north west)
@@ -162,113 +138,128 @@
     \node[anchor=north west,inner sep=0pt,text=white!72!ink,text width=9cm,align=left]
       at ([xshift=1.1cm,yshift=-5.6cm]current page.north west)
       {Reimplementing Boyan (ICML 1999)\\and a ridge-regularised extension};
-    \node[anchor=south west,inner sep=0pt,align=left]
-      at ([xshift=1.1cm,yshift=0.75cm]current page.south west)
-      {\color{white}\small\bfseries \memberA\quad\textperiodcentered\quad\memberB\quad\textperiodcentered\quad\memberC\quad\textperiodcentered\quad\memberD\\[3pt]
-       \color{white!55!ink}\scriptsize E1 277 Reinforcement Learning\enspace\textperiodcentered\enspace November 2026};
+    \node[anchor=south west,inner sep=0pt,text=white,align=left]
+      at ([xshift=1.1cm,yshift=0.9cm]current page.south west)
+      {\small Dinesh Chand, Meena Chidambram, Nadiya R S and Sabin\\[4pt]
+       \scriptsize\color{white!65!ink}IISc, Mtech AI 2026};
   \end{tikzpicture}
 \end{frame}
 
-\begin{frame}{What we did}
-  \begin{columns}[T]
-    \column{0.55\textwidth}
-    \textbf{One-line summary.} TD($\lambda$) solves a linear system by slow, noisy gradient steps.
-    LSTD($\lambda$) estimates that system from data and \hl{solves it directly}: same answer, less data, no step size.
-    \vspace{0.6em}
+\section{Problem statement and setup}
 
-    \textbf{Talk outline}
-    \begin{enumerate}
-      \item Motivation \& setup \hfill \memberA
-      \item TD($\lambda$) and its weaknesses \hfill \memberB
-      \item The LSTD($\lambda$) algorithm \hfill \memberC
-      \item Experiments \& novelty \hfill \memberD
-    \end{enumerate}
-    \column{0.42\textwidth}
-    \small
-    \begin{tabular}{@{}p{0.41\linewidth}p{0.53\linewidth}@{}}
-      \toprule
-      \textbf{Course task} & \textbf{Our work} \\
-      \midrule
-      Understand algorithm & Derivation + paper's equivalences proved as unit tests \\
-      Run authors' code & None public (1999) $\Rightarrow$ full reimplementation, matches paper Figs.~5--6 \\
-      Change settings & $\lambda$, 12 TD step sizes, feature dim.\ $d$ \\
-      New environment & 19-state random walk, weak features \\
-      Improvement & Ridge LSTD for very few trajectories \\
-      \bottomrule
-    \end{tabular}
-  \end{columns}
+\begin{frame}{Problem statement and motivation}
+  \speaker{\memberA}
+  \small
+  \begin{itemize}
+    \item An agent moves from state to state and receives a reward after each move. A policy is the rule that chooses those moves.
+    \item In this project the policy is already chosen and does not change, so the system is a Markov reward process (MRP).
+    \item If every transition probability were known, that estimate would be the solution of a linear system.
+    \item The probabilities are unknown. We only see sampled trajectories, so the system has to be built from data.
+    \item TD($\lambda$) builds it through repeated step-size updates. The step size is chosen by hand, and a poor choice makes learning slow or unstable.
+    \item Boyan (ICML 1999, \hl{Best Paper Award}) replaces those updates with one least-squares solve, LSTD($\lambda$). The same trajectories give a more accurate value, and there is no step size.
+    \item With only a few trajectories the least-squares matrix can be poorly determined. \hl{Ridge regression}, $(A+\epsilon I)\vth=b$, is our addition for that case.
+  \end{itemize}
 \end{frame}
 
 % =========================================================================
-\section{Motivation \& setup}
+\section{Background}
 
 \begin{frame}{Policy evaluation}
   \speaker{\memberA}
-  \begin{itemize}
-    \item Fixed policy $\pi$ in an MDP $\Rightarrow$ a Markov chain with rewards.
-    \item \textbf{Value function}: expected total future reward from each state
-      \[ V^\pi(s) = \mathbb{E}\Big[\textstyle\sum_{t\ge 0} \gamma^t r_t \;\Big|\; s_0 = s\Big] \]
-    \item Inner loop of policy iteration, actor--critic, STAGE, \ldots
-    \item If the transition matrix $P$ is known, it is just a linear system (Bellman equation):
-      \[ V = r + \gamma P V \]
-    \item \hl{In practice:} (1) $P$ is unknown --- we only see sampled trajectories;
-      (2) too many states to store a table.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Linear function approximation}
-  \speaker{\memberA}
-  \begin{itemize}
-    \item Describe each state by $K$ features $\vphi(s)\in\mathbb{R}^K$ and learn only $K$ weights:
-      \[ \hat V(s) = \vphi(s)^\top \vth \]
-    \item Covers lookup tables, state aggregation, tile coding / CMACs, RBFs, polynomials.
-    \item \textbf{Data:} trajectories of transitions $(s_t,\, r_t,\, s_{t+1})$ until termination.
-    \item \textbf{Goal:} find $\vth$ such that $\hat V \approx V^\pi$, using as few trajectories as possible.
-    \item \textbf{Metric (paper):} RMS error over all states
-      \[ \mathrm{RMSE} = \sqrt{\tfrac{1}{|S|}\textstyle\sum_s \big(\vphi(s)^\top\vth - V^\pi(s)\big)^2} \]
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Monte Carlo vs.\ TD: the intuition}
-  \speaker{\memberA}
-  \begin{center}
-    \begin{tikzpicture}
-      \node[st] (A) {A};
-      \node[st, right=2.6cm of A] (B) {B};
-      \node[draw,thick,rounded corners, right=2.6cm of B] (E) {end};
-      \draw[arr] (A) -- node[above]{\small $r=0$} node[below]{\scriptsize always} (B);
-      \draw[arr] (B) -- node[above]{\small $r=1$ / $r=0$} node[below]{\scriptsize 75\% / 25\%} (E);
-    \end{tikzpicture}
-  \end{center}
+  \small
+  \setlength{\abovedisplayskip}{0.3em}%
+  \setlength{\belowdisplayskip}{0.25em}%
   \begin{columns}[T]
     \column{0.48\textwidth}
-    \small
-    \textbf{Data:} 8 episodes. One starts at A and is unlucky (A$\to$B$\to$0). Seven start at B: six pay 1, one pays 0.
-    \vspace{0.4em}
-
-    \textbf{MC}: target = actual return.\\ ``From A I once got 0'' $\Rightarrow \hat V(A)=0$.\\[0.3em]
-    \textbf{TD}: target = $r + \hat V(\text{next})$.\\ ``A gives 0 then B, and B averages 0.75'' $\Rightarrow \hat V(A)=0.75$.
-    \column{0.48\textwidth}
-    \small
-    \begin{tabular}{lccc}
-      \toprule
-      & True & MC & TD \\
-      \midrule
-      $V(B)$ & 0.75 & 0.75 & 0.75 \\
-      $V(A)$ & 0.75 & \hl{0} & \hl{0.75} \\
-      \bottomrule
-    \end{tabular}
-    \vspace{0.5em}
-
-    MC: unbiased, \emph{high variance}.\\
-    TD: \emph{bootstraps} from its own estimate; low variance, biased while estimates are wrong.
+    \textbf{Exact value method}
+    \begin{itemize}
+      \item The value of a state is its expected total future reward:
+      \[ V^\pi(s)=\mathbb{E}\Big[\sum_{t\ge 0}\gamma^t r_t \;\Big|\; s_0=s\Big] \]
+      \item The Bellman equation splits that into one reward plus the rest:
+      \[ V(s)=\mathbb{E}\big[r+\gamma V(s')\big] \]
+      \item When $P$ and the rewards are known, this is a linear system and can be solved directly.
+    \end{itemize}
+    \column{0.50\textwidth}
+    \textbf{Value-function approximation}
+    \begin{itemize}
+      \item In this project the transitions are unknown. Each step is only a sample $(s,\, r,\, s_{\mathrm{next}},\, \mathrm{done})$.
+      \item One stored number per state does not scale, so $d$ weights represent every state, with $d\ll|S|$:
+      \[ \hat V(s)=\vphi(s)^\top\vth,\qquad \vphi(s)\in\mathbb{R}^d \]
+      \item The features $\vphi(s)$ are fixed in advance. Monte Carlo, TD, and LSTD are three ways to learn $\vth$.
+    \end{itemize}
   \end{columns}
 \end{frame}
 
-\begin{frame}{Test domain: the Boyan chain (paper Fig.~4)}
+\begin{frame}{Monte Carlo, TD, and LSTD}
+  \speaker{\memberA}
+  \scriptsize
+  All three approximate the same value function. Write $\hat V(s)=\vphi(s)^\top\vth$ and $\vphi_t=\vphi(s_t)$.
+  \vspace{0.2em}
+  \setlength{\abovedisplayskip}{3pt}%
+  \setlength{\belowdisplayskip}{3pt}%
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.305\textwidth}
+      \begin{minipage}[t][4.35cm][t]{0.94\linewidth}
+      \raggedright
+      {\color{accent}\small\bfseries Monte Carlo}\par\vspace{0.28em}
+      The target is the return actually received. The update waits until the episode ends.
+      \begin{align*}
+        G_t &= \textstyle\sum_{k\ge 0}\gamma^k r_{t+k+1}\\
+        e_t &= G_t-\hat V(s_t)\\
+        \vth &\leftarrow \vth+\alpha\,e_t\,\vphi_t
+      \end{align*}
+      Uses the observed outcome.\par
+      One odd episode can move $\hat V$ a long way.\par
+      $\lambda=1$ is this end of the scale.
+      \end{minipage}
+    \end{column}
+    \begin{column}{0.028\textwidth}
+      \centering\textcolor{hair}{\rule{0.7pt}{4.35cm}}
+    \end{column}
+    \begin{column}{0.324\textwidth}
+      \begin{minipage}[t][4.35cm][t]{0.94\linewidth}
+      \raggedright
+      {\color{accent}\small\bfseries TD($\lambda$)}\par\vspace{0.28em}
+      The target is one reward plus a discounted estimate of the next state.
+      \begin{align*}
+        \delta_t &= r_t+\gamma\hat V(s_{t+1})\\
+                 &\quad {}-\hat V(s_t)\\
+        \vz_t &= \gamma\lambda\,\vz_{t-1}+\vphi_t\\
+        \vth &\leftarrow \vth+\alpha\,\delta_t\,\vz_t
+      \end{align*}
+      $\lambda=0$: only the current state.\par
+      Larger $\lambda$: earlier states keep a decaying share.\par
+      $\alpha$ sets how far each nudge goes.
+      \end{minipage}
+    \end{column}
+    \begin{column}{0.028\textwidth}
+      \centering\textcolor{hair}{\rule{0.7pt}{4.35cm}}
+    \end{column}
+    \begin{column}{0.305\textwidth}
+      \begin{minipage}[t][4.35cm][t]{0.94\linewidth}
+      \raggedright
+      {\color{accent}\small\bfseries LSTD($\lambda$)}\par\vspace{0.28em}
+      Same $\delta_t$ and $\vz_t$. Solve for the $\vth$ at which the updates add to zero.
+      \begin{align*}
+        \Delta_t &= \vphi_t-\gamma\vphi_{t+1}\\
+        A &\mathrel{+}= \vz_t\Delta_t^\top\\
+        b &\mathrel{+}= r_t\,\vz_t\\
+        \vth &= A^{-1}b
+      \end{align*}
+      No step size.\par
+      Terminal step: $\vphi_{t+1}=\mathbf{0}$.\par
+      LSTD($1$) = Monte Carlo regression.
+      \end{minipage}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\section{Methodology}
+
+\begin{frame}{Boyan chain and the paper's experiment}
   \speaker{\memberA}
   \begin{center}
-    \begin{tikzpicture}[node distance=1.35cm]
+    \begin{tikzpicture}[node distance=1.15cm]
       \node[st] (s12) {12};
       \node[st, right=of s12] (s11) {11};
       \node[st, right=of s11] (s10) {10};
@@ -277,25 +268,85 @@
       \node[st, right=of s2] (s1) {1};
       \node[st, double, right=of s1] (s0) {0};
       \foreach \a/\b in {s12/s11, s11/s10, s10/dots, dots/s2, s2/s1}
-        \draw[arr] (\a) -- node[above]{\scriptsize $-3$} (\b);
-      \draw[arr] (s1) -- node[above]{\scriptsize $-2$} (s0);
-      \draw[arr] (s12) to[bend left=40] node[above]{\scriptsize $-3$} (s10);
-      \draw[arr] (s2) to[bend left=40] node[above]{\scriptsize $-3$} (s0);
-      \node[above=0.1cm of s12] {\scriptsize start};
-      \node[below=0.15cm of s12, font=\tiny] {$[1,0,0,0]$};
-      \node[below=0.15cm of s11, font=\tiny] {$[\frac34,\frac14,0,0]$};
-      \node[below=0.15cm of s10, font=\tiny] {$[\frac12,\frac12,0,0]$};
-      \node[below=0.15cm of s2, font=\tiny] {$[0,0,\frac12,\frac12]$};
-      \node[below=0.15cm of s1, font=\tiny] {$[0,0,\frac14,\frac34]$};
-      \node[below=0.15cm of s0, font=\tiny] {$[0,0,0,1]$};
+        \draw[arr] (\a) -- node[above,font=\tiny] {$-3$} (\b);
+      \draw[arr] (s1) -- node[above,font=\tiny] {$-2$} (s0);
+      \draw[arr] (s12) to[bend left=38] node[above,font=\tiny] {$-3$} (s10);
+      \draw[arr] (s2) to[bend left=38] node[above,font=\tiny] {$-3$} (s0);
+      \node[above=0.02cm of s12, font=\tiny] {start};
+      \node[below=0.08cm of s12, font=\tiny] {$[1,0,0,0]$};
+      \node[below=0.08cm of s11, font=\tiny] {$[\frac34,\frac14,0,0]$};
+      \node[below=0.08cm of s10, font=\tiny] {$[\frac12,\frac12,0,0]$};
+      \node[below=0.08cm of s2, font=\tiny] {$[0,0,\frac12,\frac12]$};
+      \node[below=0.08cm of s1, font=\tiny] {$[0,0,\frac14,\frac34]$};
+      \node[below=0.08cm of s0, font=\tiny] {$[0,0,0,1]$};
     \end{tikzpicture}
   \end{center}
-  \begin{itemize}
-    \item 13 states, start at 12, state 0 terminal, $\gamma = 1$. From $s\ge2$: go to $s{-}1$ or $s{-}2$ (prob.\ $\tfrac12$ each), reward $-3$.
-    \item $K=4$ features: anchors at 12, 8, 4, 0; linear interpolation in between.
-    \item True values $V^\pi(s) = -2s$ are \hl{exactly representable}: $\vth^* = (-24,-16,-8,0)$.
-    \item Every constant above checked against the paper and covered by unit tests.
-  \end{itemize}
+  \vspace{-0.35em}
+  \setlength{\itemsep}{0.15em}%
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \scriptsize
+    \textbf{The chain} (paper Fig.~4)
+    \begin{itemize}
+      \item States $12\to 0$. Start at 12, state 0 ends the episode, $\gamma=1$.
+      \item From $s\ge 2$: move to $s{-}1$ or $s{-}2$, each with probability $\tfrac12$, reward $-3$.
+      \item From 1: always move to 0, reward $-2$.
+      \item True answer: $V^\pi(s)=-2s$, so $V(12)=-24$ and $V(0)=0$.
+    \end{itemize}
+    \column{0.50\textwidth}
+    \scriptsize
+    \textbf{What the paper measures} (Sec.~4)
+    \begin{itemize}
+      \item Learn $\vth$ from sampled episodes. Compare $\vphi(s)^\top\vth$ with $-2s$.
+      \item Algorithms: LSTD($\lambda$) and offline TD($\lambda$), on the same episodes.
+      \item Sweep $\lambda$ and the number of trajectories, up to $10^4$.
+      \item TD also sweeps step sizes. LSTD has none.
+      \item Four features, anchored at 12, 8, 4, and 0. $V^\pi$ is \hl{exactly representable}: $\vth^*=(-24,-16,-8,0)$.
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Parameters and variables}
+  \speaker{\memberA}
+  \small
+  These are the objects in the equations, and the settings of the experiment we reimplement. Later slides use the same names.
+  \vspace{0.45em}
+  \begin{columns}[T]
+    \column{0.46\textwidth}
+    \scriptsize
+    \renewcommand{\arraystretch}{1.08}%
+    \begin{tabular}{@{}lll@{}}
+      \toprule
+      \textbf{Symbol} & \textbf{Code} & \textbf{Role} \\
+      \midrule
+      $\gamma$ & \texttt{gamma} & Discount; $1$ in this project \\
+      $\lambda$ & \texttt{lam} & Trace decay, in $[0,1]$ \\
+      $\vphi(s)$ & \texttt{phi[s]} & Feature row of state $s$ \\
+      $\vth$ & \texttt{theta} & Weights in $\hat V=\vphi^\top\vth$ \\
+      $\vz_t$ & \texttt{z} & Eligibility trace \\
+      $\delta_t$ & \texttt{delta} & TD error \\
+      $A,b$ & \texttt{A}, \texttt{b} & System LSTD solves \\
+      $\alpha$ & \texttt{alpha} & TD step size \\
+      $\epsilon$ & \texttt{reg} & Ridge, $(A+\epsilon \mathrm{I})\vth=b$ \\
+      \bottomrule
+    \end{tabular}
+    \column{0.52\textwidth}
+    \scriptsize
+    \renewcommand{\arraystretch}{1.08}%
+    \begin{tabular}{@{}lp{0.62\linewidth}@{}}
+      \toprule
+      \textbf{Setting} & \textbf{Value in the replication} \\
+      \midrule
+      Features & $d=4$; states between anchors are mixtures \\
+      $\lambda$ grid & $0,0.2,\ldots,1$; headline plots use $0.4$ \\
+      Trajectories & $1$ to $10^4$ episodes on each curve \\
+      TD schedules & constant $\alpha$, and $\alpha_n=a_0\dfrac{n_0+1}{n_0+n}$ \\
+      One transition & $(s,\, r,\, s_{\mathrm{next}},\, \mathrm{done})$ \\
+      Terminal step & $\vphi(s_{\mathrm{next}})=\mathbf{0}$ \\
+      Error & RMSE of $\vphi^\top\vth$ vs.\ $V^\pi$, all states \\
+      \bottomrule
+    \end{tabular}
+  \end{columns}
 \end{frame}
 
 % =========================================================================
