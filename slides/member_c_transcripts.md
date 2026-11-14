@@ -40,9 +40,9 @@ These scripts follow the five Member C slides in `lstd_presentation.tex` and `ls
 
 > The main benefits are effective use of the collected data and avoiding a TD step-size schedule. In the paper’s Boyan-chain experiments, LSTD learned from fewer trajectories than the tested TD schedules.
 >
-> This corridor example illustrates how it combines information.
+> Let’s return to the corridor Nadhiya introduced. We saw that Monte Carlo gives A its one observed return of zero, while TD can use B’s improving estimate to update A.
 >
-> A leads to B with zero reward. B then gives either zero or one reward, and the episode ends. Here, we use gamma equal to one.
+> Now the question is: **can we solve for those values directly from the same data?** We keep the same corridor and gamma equal to one.
 >
 > We have eight episodes. One starts at A and finishes with reward zero. The other seven start at B: six give one, and one gives zero.
 >

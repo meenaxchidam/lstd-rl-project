@@ -52,21 +52,19 @@
 \setbeamertemplate{description item}{\color{second}\bfseries\insertdescriptionitem}
 
 \newcommand{\twodigit}[1]{\ifnum#1<10 0\fi\number#1}
-\newcommand{\sectionspeaker}{\ifcase\value{section}\or\memberA\or\memberA\or\memberA\or\memberB\or\memberC\or\memberD\fi}
+\newcounter{presentationpart}
+\newif\ifpartdivider
 \newif\ifbackup
 
 \makeatletter
-% section label on the left, speaker tag on the right, then the title
+% presentation-part label followed by the slide title
 \setbeamertemplate{frametitle}{%
   \vspace*{0.15cm}%
   \begin{minipage}[t]{\linewidth}%
     {\usebeamerfont{eyebrow}%
      \ifbackup\textcolor{muted}{BACKUP}%
-     \else\ifnum\value{section}>0\textcolor{accent}{\twodigit{\value{section}}\enspace\rule[0.3ex]{1.2em}{0.6pt}\enspace\insertsectionhead}\fi\fi
-     \hfill
-     \ifx\insertframesubtitle\@empty\else
-       \tikz[baseline=(t.base)]\node[fill=second!10,text=second,rounded corners=6pt,inner xsep=6pt,inner ysep=2.5pt](t){\faMicrophone\enspace\insertframesubtitle};%
-     \fi\par}%
+     \else\ifnum\value{section}>0\textcolor{accent}{\arabic{presentationpart}\enspace\rule[0.3ex]{1.2em}{0.6pt}\enspace\insertsectionhead}\fi\fi
+     \par}%
     \vspace{0.25em}%
     {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle\par}%
   \end{minipage}%
@@ -94,25 +92,31 @@
 \newcommand{\darkbg}{\fill[ink] (current page.south west) rectangle (current page.north east);}
 
 \AtBeginSection[]{%
-  \ifnum\value{section}<4\else
+  \ifnum\value{section}<4
+    \setcounter{presentationpart}{1}%
+  \else
+    \setcounter{presentationpart}{\numexpr\value{section}-2\relax}%
+  \fi
+  \partdividerfalse
+  \ifnum\value{section}=1\relax\partdividertrue\fi
+  \ifnum\value{section}>3\relax\partdividertrue\fi
+  \ifpartdivider
   \begin{frame}[plain,noframenumbering]
   \begin{tikzpicture}[remember picture,overlay]
     \darkbg
     \node[anchor=south west,inner sep=0pt,text=accent,font=\fontsize{72}{72}\selectfont\bfseries]
-      at ([xshift=1.0cm,yshift=0.15cm]current page.west) {\twodigit{\value{section}}};
+      at ([xshift=1.0cm,yshift=0.15cm]current page.west) {\arabic{presentationpart}};
     \node[anchor=north west,inner sep=0pt,text=white,font=\fontsize{26}{30}\selectfont\bfseries,text width=12cm]
-      at ([xshift=1.1cm,yshift=-0.35cm]current page.west) {\insertsectionhead};
-    \node[anchor=north west,inner sep=0pt,text=white!60!ink,font=\small]
-      at ([xshift=1.1cm,yshift=-1.6cm]current page.west) {\faMicrophone\enspace\sectionspeaker};
-    \foreach \k in {1,...,6} {
-      \ifnum\k=\value{section}\def\barcol{accent}\else\def\barcol{white!25!ink}\fi
+      at ([xshift=1.1cm,yshift=-0.35cm]current page.west) {\ifnum\value{section}=1 Problem, background and methodology\else\insertsectionhead\fi};
+    \foreach \k in {1,...,4} {
+      \ifnum\k=\value{presentationpart}\def\barcol{accent}\else\def\barcol{white!25!ink}\fi
       \fill[\barcol] ([xshift=1.1cm+(\k-1)*1.0cm,yshift=1.0cm]current page.south west) rectangle ++(0.8cm,0.08cm);
     }
   \end{tikzpicture}
   \end{frame}\fi}
 % =========================================================================
 
-\newcommand{\speaker}[1]{\framesubtitle{#1}}
+\newcommand{\speaker}[1]{} % retain ownership annotations in source only
 \newcommand{\hl}[1]{\textcolor{accent}{\textbf{#1}}}
 \newcommand{\vphi}{\bm{\phi}}
 \newcommand{\vz}{\mathbf{z}}
@@ -121,7 +125,7 @@
          arr/.style={-{Stealth[length=2mm]},thick,draw=ink!80}}
 
 \title{Least-Squares Temporal Difference Learning}
-\author{\memberA, \memberB, \memberC, \memberD}
+\author{Dinesh Chand, Meena Chidambaram, Nadhiya R S, Sebin Francis Kannampuzha}
 \date{November 2026}
 
 \begin{document}
@@ -140,7 +144,7 @@
       {Reimplementing Boyan (ICML 1999)\\and a ridge-regularised extension};
     \node[anchor=south west,inner sep=0pt,text=white,text width=13.8cm,align=left]
       at ([xshift=1.1cm,yshift=0.9cm]current page.south west)
-      {\small Dinesh Chand, Meena Chidambram, Nadhiya R S and Sebin Francis Kannampuzha\\[4pt]
+      {\small Dinesh Chand, Meena Chidambaram, Nadhiya R S and Sebin Francis Kannampuzha\\[4pt]
        \scriptsize\color{white!65!ink}IISc, Mtech AI 2026};
   \end{tikzpicture}
 \end{frame}
@@ -375,13 +379,11 @@
 
 \begin{frame}{TD($\lambda$): the update and the role of $\lambda$}
   \speaker{\memberB}
-  \footnotesize
+  \small
   \[\hat V(s)=\vphi(s)^\top\vth,\qquad
     \delta_t=r_t+\gamma\hat V(s_{t+1})-\hat V(s_t),\qquad
     \vz_t=\gamma\lambda\vz_{t-1}+\vphi(s_t)\]
   \[\vth\leftarrow\vth+\alpha_n\sum_t\delta_t\vz_t\qquad\text{(paper-style trajectory update)}\]
-  \begin{columns}[T]
-    \column{0.52\textwidth}
     \begin{itemize}
       \item $\vz_t$ shares each TD error with recently active features.
       \item $\lambda=0$: one-step TD target.
@@ -389,20 +391,14 @@
       \item $\lambda=1$: Monte Carlo return.
       \item The paper's key TD interpretation is this bias--variance continuum, not three separate ``views.''
     \end{itemize}
-    \column{0.44\textwidth}
-    \begin{block}{Where does TD go?}
-      Averaged over trajectories, expected updates vanish at
-      \[\mathbf d+C\vth=0.\]
-      TD approaches this fixed point incrementally; the step-size schedule affects the path and rate of convergence. Member C will show how LSTD estimates and solves this system directly.
-    \end{block}
-  \end{columns}
+  \note{Focus here on TD updates, eligibility traces, and the role of lambda. The LSTD motivation slide will introduce the expected-update fixed point and show why it can be solved directly.}
 \end{frame}
 
 \begin{frame}{TD experiment: setup, results, and computation}
   \speaker{\memberB}
   \begin{columns}[c]
     \column{0.43\textwidth}
-    \includegraphics[width=\linewidth]{fig1b_paper_fig5.png}
+    \includegraphics[width=\linewidth]{fig_td_learning_curves.png}
     \column{0.54\textwidth}
     \footnotesize
     \textbf{Setup:} 13 states, 4 features, $\gamma=1$, $\lambda=0.4$; 20 seeds.\\
@@ -456,7 +452,7 @@
   \speaker{\memberC}
   \begin{itemize}
     \item For a fixed policy, learn weights in $\hat V(s)=\vphi(s)^\top\vth$.
-    \item TD changes these weights through incremental updates. Its step-size schedule affects learning speed and stability.
+    \item TD approaches a fixed point through incremental updates. Where should those weights settle?
     \item Averaged over trajectories, the update has a linear form:
       \[ \mathbb{E}[\Delta\vth\mid\vth]=\alpha\,(\mathbf{d}+C\vth). \]
       Here $\mathbf{d}$ summarizes rewards and $C\vth$ the value-prediction contribution.
@@ -466,7 +462,7 @@
   \begin{keyidea}
     \textbf{LSTD:} estimate this balance from experience and solve it directly.
   \end{keyidea}
-  \note{Bridge from Member B: TD approaches a fixed point through stochastic updates. For the paper's episode-wise TD, weights stay fixed within an episode. Under the standard coverage, feature and step-size assumptions, the expected system has a unique stable solution. Individual sample corrections need not vanish. Source: Boyan (1999), Sections 1--2, Equation 1.}
+  \note{Bridge from the TD section: we have seen the update rule and step-size sensitivity; now ask where those updates settle. TD approaches a fixed point through stochastic updates, and the step-size schedule affects the path and rate of convergence. For the paper's episode-wise TD, weights stay fixed within an episode. Under the standard coverage, feature and step-size assumptions, the expected system has a unique stable solution. Individual sample corrections need not vanish. Source: Boyan (1999), Sections 1--2, Equation 1.}
 \end{frame}
 
 \begin{frame}{The LSTD($\lambda$) algorithm (paper Fig.~2)}
@@ -508,7 +504,7 @@
       \item Useful when observations are costly and the feature count is modest.
     \end{itemize}
     \column{0.54\textwidth}
-    \begin{block}{Illustrative corridor example}
+    \begin{block}{Same corridor, now with LSTD}
       \small
       {\centering
         \begin{tikzpicture}
@@ -519,13 +515,13 @@
           \draw[arr] (B) -- node[above]{\scriptsize $r=0$ or $1$} (E);
         \end{tikzpicture}
       \par}\vspace{0.4em}
-      \textbf{8 episodes:} one starts at A and returns 0. Seven start at B: six pay 1, one pays 0.\\[0.4em]
+      \textbf{Recall the sample:} A was visited once (return 0); B paid 1 on 6 of its 8 visits.\\[0.4em]
       \textbf{LSTD(0), one pass and solve:}\\
       $\hat V(B)=6/8=0.75$,\quad $\hat V(A)=0+\hat V(B)=0.75$.\\[0.4em]
-      TD(0) approaches this answer through repeated updates.
+      TD(0) propagates this gradually; LSTD(0) solves both values together.
     \end{block}
   \end{columns}
-  \note{Introduce the corridor before giving the answer: A gives no reward and leads to B; B pays 0 or 1 and terminates. The first episode starts at A and has payout 0. The other seven start at B, with six wins and one zero, so there are eight visits to B in total. LSTD(0) estimates B as 6/8 and solves A=0+B, obtaining .75 for both. Ordinary TD starts with B unknown when it first visits A; replay lets the improved estimate of B reach A through later updates. This is an illustrative fixed dataset evaluated with our implementations, not Boyan's experimental environment. Monte Carlo and LSTD(1) fit the one observed return from A as 0. About 2000 deterministic replays with alpha=.01 yield approximately .7499, not an exact or universal replay requirement. The paper's data-efficiency result is on the Boyan chain; it does not guarantee universal superiority or lower runtime. Sources: Boyan (1999), Sections 2, 4--5; docs/MC_vs_TD_vs_LSTD.md.}
+  \note{Continue the corridor already introduced in the TD section, rather than introducing a new environment. Recall that MC gives A the one observed return of 0, while TD can propagate B's estimate back to A. Now ask how LSTD obtains that same empirical TD fixed point directly. The diagram is a visual reminder: A gives no reward and leads to B; B pays 0 or 1 and terminates; gamma=1. The first episode starts at A and has payout 0. The other seven start at B, with six wins and one zero, so there are eight visits to B in total. LSTD(0) estimates B as 6/8 and solves A=0+B, obtaining .75 for both. Ordinary TD starts with B unknown when it first visits A; replay lets the improved estimate of B reach A through later updates. This is an illustrative fixed dataset evaluated with our implementations, not Boyan's experimental environment. Monte Carlo and LSTD(1) fit the one observed return from A as 0. About 2000 deterministic replays with alpha=.01 yield approximately .7499, not an exact or universal replay requirement. The paper's data-efficiency result is on the Boyan chain; it does not guarantee universal superiority or lower runtime. Sources: Boyan (1999), Sections 2, 4--5; docs/MC_vs_TD_vs_LSTD.md.}
 \end{frame}
 
 \begin{frame}{Recursive LSTD}
