@@ -225,11 +225,11 @@ Use a steady technical speaking pace. Pause after the Bellman equation, the TD f
 
 ### Slide 25 — Conclusions and limitations · 0:32
 
-> We reproduce Boyan’s main empirical finding: LSTD uses these trajectories more effectively than our tested TD schedules, at greater computational cost.
+> We reproduced Boyan’s main finding: LSTD beats every TD setting we tried, at every data size and lambda, with no step size to tune. Its price is more computation per step.
 >
-> Our extension helps with limited data, especially in the coarse-feature random walk.
+> Our ridge extension halves the error with one trajectory when features are weak, but adds little when they are exact.
 >
-> Our limits are small chains, finite TD tuning, and exact main-benchmark features. Fixed epsilon also weakens relative to growing data. Broader evaluation remains necessary.
+> Our limits are small chains with exact main-benchmark features, prediction only, finite TD tuning, and a fixed epsilon that weakens as data grow.
 
 ### Slide 26 — Questions · 0:04
 
