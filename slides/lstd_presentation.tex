@@ -701,24 +701,26 @@
 
 \begin{frame}{Conclusions and limitations}
   \speaker{\memberD}
-  \small
+  \footnotesize
   \begin{columns}[T]
-    \column{0.53\textwidth}
+    \column{0.55\textwidth}
     \textbf{Conclusions}
     \begin{itemize}
-      \item \hl{Reproduced the paper:} LSTD beats TD at every $n$, $\lambda$ and step size ($2$--$3.5\times$ below TD with the best $\alpha$ at each $n$).
-      \item TD's best $\alpha$ depends on the data budget; a bad $\alpha$ costs $10$--$100\times$.
-      \item LSTD: no step size, insensitive to $\lambda$ here.
-      \item Price: $O(K^2)$ per step vs.\ $O(K)$.
-      \item Ridge helps when data are scarce \emph{and} features weak.
+      \item \hl{Reproduced Boyan (1999):} LSTD($\lambda$) beats every TD setting we tried, at every $n$ and $\lambda$ ($2$--$3.5\times$ below the best TD at $n=100$ and $10^4$).
+      \item TD's best step size shifts with the data budget; a poor choice costs $20$--$40\times$ more error.
+      \item LSTD has no step size: it solves $A\vth=\mathbf{b}$ directly, reusing every transition.
+      \item $\lambda$ barely matters for LSTD here: the features are exact.
+      \item Price: $O(K^2)$ per step vs.\ $O(K)$ ($K=256$: 64\,ms vs.\ 2.7\,ms).
+      \item \hl{Ridge LSTD} halves the error with one trajectory when features are weak; $\le 3\%$ gain when exact.
     \end{itemize}
-    \column{0.44\textwidth}
+    \column{0.42\textwidth}
     \textbf{Limitations}
     \begin{itemize}
-      \item Toy chains; Boyan features are exact (best case for LSTD).
-      \item TD tuned over a 12-point grid only.
-      \item Fixed $\epsilon$ weakens as $n$ grows ($A$ is a sum).
-      \item Ridge shrinks toward $\vth = 0$, not a prior.
+      \item Small chains (13 and 19 states); Boyan's features are exact, the best case for LSTD.
+      \item Prediction only (fixed policy); control, e.g.\ LSPI, not tested.
+      \item TD tuned over a 12-setting grid, with the paper's per-trajectory updates.
+      \item $O(K^2)$ memory and time limit LSTD for very large feature sets.
+      \item Ridge: $\epsilon$ picked after the fact; fixed $\epsilon$ weakens as $n$ grows; shrinks toward $\vth=0$.
     \end{itemize}
   \end{columns}
 \end{frame}
